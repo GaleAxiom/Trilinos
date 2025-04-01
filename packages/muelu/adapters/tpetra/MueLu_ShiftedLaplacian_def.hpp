@@ -35,7 +35,6 @@
 #include <MueLu_TransPFactory.hpp>
 #include <MueLu_UncoupledAggregationFactory.hpp>
 #include <MueLu_Utilities.hpp>
-#include <MueLu_BelosSmoother_decl.hpp>
 
 namespace MueLu {
 
@@ -59,7 +58,7 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setParameters(
   } else if (stype == 4) {
     Smoother_ = "chebyshev";
   } else if (stype == 5) {
-    Smoother_ = "GMRES";
+    Smoother_ = "krylov";
   } else if (stype == 6) {
     Smoother_ = "ilut";
   } else if (stype == 7) {
@@ -70,8 +69,6 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setParameters(
     Smoother_ = "superilu";
   } else if (stype == 10) {
     Smoother_ = "superlu";
-  } else if (stype == 11) {
-    Smoother_ = "klu2";
   } else {
     Smoother_ = "schwarz";
   }
@@ -105,21 +102,15 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setProblemMatr
   A_ = A;
   if (A_ != Teuchos::null)
     TpetraA_ = toTpetra(A_);
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
   if (LinearProblem_ != Teuchos::null)
     LinearProblem_->setOperator(TpetraA_);
-#else
-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
-#endif
 }
 
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
 void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setProblemMatrix(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> >& TpetraA) {
   TpetraA_ = TpetraA;
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
   if (LinearProblem_ != Teuchos::null)
     LinearProblem_->setOperator(TpetraA_);
-#endif
 }
 
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
@@ -205,9 +196,7 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
     Manager_->SetFactory("R", Rfact_);
     solverType_ = 10;
   }
-  
-  //! temp fix value
-  BelosSmoother belosSmoother = BelosSmoother("Block GMRES", Teuchos::ParameterList());
+
   // choose smoother
   if (Smoother_ == "jacobi") {
     precType_ = "RELAXATION";
@@ -224,6 +213,17 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
     precList_.set("relaxation: type", "Symmetric Gauss-Seidel");
     precList_.set("relaxation: sweeps", smoother_sweeps_);
     precList_.set("relaxation: damping factor", smoother_damping_);
+  } else if (Smoother_ == "chebyshev") {
+    precType_ = "CHEBYSHEV";
+  } else if (Smoother_ == "krylov") {
+    precType_ = "KRYLOV";
+    precList_.set("krylov: iteration type", krylov_type_);
+    precList_.set("krylov: number of iterations", krylov_iterations_);
+    precList_.set("krylov: residual tolerance", 1.0e-8);
+    precList_.set("krylov: block size", 1);
+    precList_.set("krylov: preconditioner type", krylov_preconditioner_);
+    precList_.set("relaxation: sweeps", 1);
+    solverType_ = 10;
   } else if (Smoother_ == "ilut") {
     precType_ = "ILUT";
     precList_.set("fact: ilut level-of-fill", ilu_leveloffill_);
@@ -268,44 +268,18 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
     precList_.set("ColPerm", ilu_colperm_);
     precList_.set("DiagPivotThresh", ilu_diagpivotthresh_);
   }
-  else if (Smoother_ == "klu2") {
-    precType_ = "AMESOS2";
-    Teuchos::ParameterList& amesos2List = precList_.sublist("Amesos2");
-    amesos2List.sublist("KLU2");
-  }
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
-  if(Smoother_ != "GMRES") {
-    smooProto_ = rcp(new Ifpack2Smoother(precType_, precList_));
-    smooFact_  = rcp(new SmootherFactory(smooProto_));
-  }
-  else if (Smoother_ == "GMRES") {
-    RCP<BelosSmoother> belosSmoother = rcp(new BelosSmoother("GMRES", Teuchos::ParameterList()));
-    Teuchos::RCP<SmootherPrototype> belosSmootherProto = belosSmoother->Copy();
-
-    RCP<Teuchos::ParameterList> innerBelosList_ = rcp(new Teuchos::ParameterList("GMRES"));
-    innerBelosList_->set("Maximum Iterations", 100);
-    innerBelosList_->set("Convergence Tolerance", 1e-4);
-    innerBelosList_->set("Verbosity", Belos::Errors + Belos::Warnings + Belos::StatusTestDetails);
-    innerBelosList_->set("Output Frequency", 1);
-    innerBelosList_->set("Output Style", Belos::Brief);
-
-    auto innerBelosList_ref = Teuchos::rcp_const_cast<Teuchos::ParameterList>(innerBelosList_);
-    belosSmootherProto->SetParameterList(*innerBelosList_ref);
-    
-    std::cout << belosSmootherProto->description() << std::endl;
-    
-    // auto stream = getDefaultOStream();
-    // std::cout << "Belos Smoother Parameters" << std::endl;
-    // belosSmootherProto->print(*stream, Parameters1);
-
-    smooFact_ = rcp(new SmootherFactory(belosSmootherProto));
-  }
-  else {
-    throw std::runtime_error("Unknown smoother type");
-  }
-
-  
+  // construct smoother
+  smooProto_ = rcp(new Ifpack2Smoother(precType_, precList_));
+  smooFact_  = rcp(new SmootherFactory(smooProto_));
+#if defined(HAVE_MUELU_AMESOS2) and defined(HAVE_AMESOS2_SUPERLU)
+  coarsestSmooProto_ = rcp(new DirectSolver("Superlu", coarsestSmooList_));
+#elif defined(HAVE_MUELU_AMESOS2) and defined(HAVE_AMESOS2_KLU2)
   coarsestSmooProto_ = rcp(new DirectSolver("Klu", coarsestSmooList_));
+#elif defined(HAVE_MUELU_AMESOS2) and defined(HAVE_AMESOS2_SUPERLUDIST)
+  coarsestSmooProto_ = rcp(new DirectSolver("Superludist", coarsestSmooList_));
+#else
+  coarsestSmooProto_ = rcp(new Ifpack2Smoother(precType_, precList_));
+#endif
   coarsestSmooFact_ = rcp(new SmootherFactory(coarsestSmooProto_, Teuchos::null));
 
   // For setupSlowRAP and setupFastRAP, the prolongation/restriction matrices
@@ -356,10 +330,6 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
   BelosList_->set("Output Style", Belos::Brief);
   BelosList_->set("Num Blocks", restart_size_);
   BelosList_->set("Num Recycled Blocks", recycle_size_);
-  // BelosList_->set("Orthogonalization", "DGKS");
-#else
-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
-#endif
 }
 
 // setup coarse grids for new frequency
@@ -409,7 +379,6 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setupNormalRAP
 
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
 void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setupSolver() {
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
   // Define Preconditioner and Operator
   MueLuOp_ = rcp(new MueLu::ShiftedLaplacianOperator<SC, LO, GO, NO>(Hierarchy_, A_, ncycles_, subiters_, option_, tol_));
   // Belos Linear Problem
@@ -425,36 +394,25 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setupSolver() 
     } else if (solverType_ == 2) {
       solverName = "Recycling GMRES";
     } else {
-      solverName = "BICGSTAB";
+      solverName = "Flexible GMRES";
     }
     SolverManager_ = SolverFactory_->create(solverName, BelosList_);
     SolverManager_->setProblem(LinearProblem_);
   }
-#else
-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
-#endif
 }
 
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
 void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::resetLinearProblem() {
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
   LinearProblem_->setOperator(TpetraA_);
-#else
-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
-#endif
 }
 
 // Solve phase
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
 int ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::solve(const RCP<TMV> B, RCP<TMV>& X) {
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
   // Set left and right hand sides for Belos
   LinearProblem_->setProblem(X, B);
   // iterative solve
   SolverManager_->solve();
-#else
-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
-#endif
   return 0;
 }
 
@@ -479,13 +437,8 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::multigrid_appl
 // Get most recent iteration count
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
 int ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::GetIterations() {
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
   int numiters = SolverManager_->getNumIters();
   return numiters;
-#else
-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
-  return -1;
-#endif
 }
 
 // Get most recent solver tolerance achieved
@@ -493,13 +446,8 @@ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
 typename Teuchos::ScalarTraits<Scalar>::magnitudeType
 ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::GetResidual() {
   typedef typename Teuchos::ScalarTraits<Scalar>::magnitudeType MT;
-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
   MT residual = SolverManager_->achievedTol();
   return residual;
-#else
-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
-  return MT(-1.0);
-#endif
 }
 
 }  // namespace MueLu

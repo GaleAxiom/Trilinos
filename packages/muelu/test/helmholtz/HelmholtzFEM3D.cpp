@@ -91,9 +91,16 @@ int main(int argc, char *argv[]) {
     if (comm->getRank() == 0)
       std::cout << "velocity model: " << model << std::endl;
 
+    double Kxx = 0.0;
+    double Kxy = 0.0;
+    double Kyy = 0.0;
+    double dt = 0.0;
+
     Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "HelmholtzFEM3D", 0, stretchx, stretchy, stretchz,
+                                                              Kxx, Kxy, Kyy, dt, "tri", 
                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
     Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "HelmholtzFEM3D", 0, stretchx, stretchy, stretchz,
+                                                            Kxx, Kxy, Kyy, dt, "tri", 
                                                             h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
     Xpetra::Parameters xpetraParameters(clp);
 

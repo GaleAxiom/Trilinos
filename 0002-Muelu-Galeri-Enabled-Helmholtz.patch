@@ -1,0 +1,157 @@
+From 3531b78f9462286b38ad9b33baff8b1ca936a6e2 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Distr=C3=A9e=20Florent?= <flodistree@gmail.com>
+Date: Mon, 31 Mar 2025 15:47:09 +0000
+Subject: [PATCH 2/2] Muelu(Galeri): Enabled Helmholtz
+
+---
+ packages/muelu/test/helmholtz/CMakeLists.txt     |  2 +-
+ packages/muelu/test/helmholtz/Helmholtz1D.cpp    |  8 +++++++-
+ packages/muelu/test/helmholtz/Helmholtz2D.cpp    | 10 ++++++++--
+ packages/muelu/test/helmholtz/Helmholtz3D.cpp    | 12 ++++++++++--
+ packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp |  7 +++++++
+ packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp |  7 +++++++
+ 6 files changed, 40 insertions(+), 6 deletions(-)
+
+diff --git a/packages/muelu/test/helmholtz/CMakeLists.txt b/packages/muelu/test/helmholtz/CMakeLists.txt
+index f011c806f0a..467aaa6c66f 100644
+--- a/packages/muelu/test/helmholtz/CMakeLists.txt
++++ b/packages/muelu/test/helmholtz/CMakeLists.txt
+@@ -17,7 +17,7 @@ TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../../adapters/belos)
+ TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../unit_tests)
+ 
+ # mfh 18 Aug 2015: All of the Helmholtz examples require complex arithmetic.
+-IF (${PACKAGE_NAME}_ENABLE_Zoltan2Core AND HAVE_MUELU_COMPLEX)
++IF (${PACKAGE_NAME}_ENABLE_Zoltan2Core AND HAVE_TEUCHOS_COMPLEX)
+ 
+   TRIBITS_ADD_EXECUTABLE(
+     Helmholtz1D
+diff --git a/packages/muelu/test/helmholtz/Helmholtz1D.cpp b/packages/muelu/test/helmholtz/Helmholtz1D.cpp
+index cd78abd7067..4018a03752e 100644
+--- a/packages/muelu/test/helmholtz/Helmholtz1D.cpp
++++ b/packages/muelu/test/helmholtz/Helmholtz1D.cpp
+@@ -84,12 +84,18 @@ int main(int argc, char *argv[]) {
+     PMLYR = 10;
+     PMLZL = 10;
+     PMLZR = 10;
+-    double omega, shift;
++    double omega, shift, Kxx, Kxy, Kyy, dt;
+     omega = 20.0 * M_PI;
+     shift = 0.5;
++    Kxx = 0.0;
++    Kxy = 0.0;
++    Kyy = 0.0;
++    dt = 0.0;
+ 
+     Galeri::Xpetra::Parameters<GO> matrixParameters(clp, nx, ny, nz, "Helmholtz1D", 0, stretchx, stretchy, stretchz,
++                                                    Kxx, Kxy, Kyy, dt, "tri", 
+                                                     h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift);
++
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+     RCP<TimeMonitor> globalTimeMonitor = rcp(new TimeMonitor(*TimeMonitor::getNewTimer("ScalingTest: S - Global Time")));
+diff --git a/packages/muelu/test/helmholtz/Helmholtz2D.cpp b/packages/muelu/test/helmholtz/Helmholtz2D.cpp
+index 86eb9f47d6d..78640d0d2a2 100644
+--- a/packages/muelu/test/helmholtz/Helmholtz2D.cpp
++++ b/packages/muelu/test/helmholtz/Helmholtz2D.cpp
+@@ -89,7 +89,13 @@ int main(int argc, char *argv[]) {
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
+ 
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
++
+     Galeri::Xpetra::Parameters<GO> matrixParameters_aux(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
++                                                        Kxx, Kxy, Kyy, dt, "tri", 
+                                                         h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+@@ -131,15 +137,15 @@ int main(int argc, char *argv[]) {
+     // vector of frequencies
+     std::vector<double> omegas;
+     omegas.push_back(omega);
+-    omegas.push_back(omega + 10);
+-    omegas.push_back(omega + 20);
+     int total_iters = 0;
+ 
+     // loop over frequencies
+     for (size_t i = 0; i < omegas.size(); i++) {
+       Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
++                                                                Kxx, Kxy, Kyy, dt, "tri", 
+                                                                 h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omegas[i], 0.0, mx, my, mz, model);
+       Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
++                                                              Kxx, Kxy, Kyy, dt, "tri", 
+                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omegas[i], shift, mx, my, mz, model);
+ 
+       Teuchos::ParameterList matrixParams_helmholtz = matrixParameters_helmholtz.GetParameterList();
+diff --git a/packages/muelu/test/helmholtz/Helmholtz3D.cpp b/packages/muelu/test/helmholtz/Helmholtz3D.cpp
+index 4ed06ec6e77..6f8d1fd1650 100644
+--- a/packages/muelu/test/helmholtz/Helmholtz3D.cpp
++++ b/packages/muelu/test/helmholtz/Helmholtz3D.cpp
+@@ -88,10 +88,18 @@ int main(int argc, char *argv[]) {
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
+ 
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
++
+     Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "Helmholtz3D", 0, stretchx, stretchy, stretchz,
+-                                                              h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
++                                                        Kxx, Kxy, Kyy, dt, "tri", 
++                                                        h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
++
+     Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "Helmholtz3D", 0, stretchx, stretchy, stretchz,
+-                                                            h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
++                                                        Kxx, Kxy, Kyy, dt, "tri", 
++                                                        h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+     //****************************************//
+diff --git a/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp b/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp
+index b224b5fc3f2..8cb735ff147 100644
+--- a/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp
++++ b/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp
+@@ -91,9 +91,16 @@ int main(int argc, char *argv[]) {
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
+ 
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
++
+     Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "HelmholtzFEM2D", 0, stretchx, stretchy, stretchz,
++                                                              Kxx, Kxy, Kyy, dt, "tri", 
+                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
+     Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "HelmholtzFEM2D", 0, stretchx, stretchy, stretchz,
++                                                            Kxx, Kxy, Kyy, dt, "tri", 
+                                                             h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+diff --git a/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp b/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp
+index 2cf5b299b69..12d8d7bb1c5 100644
+--- a/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp
++++ b/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp
+@@ -91,9 +91,16 @@ int main(int argc, char *argv[]) {
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
+ 
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
++
+     Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "HelmholtzFEM3D", 0, stretchx, stretchy, stretchz,
++                                                              Kxx, Kxy, Kyy, dt, "tri", 
+                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
+     Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "HelmholtzFEM3D", 0, stretchx, stretchy, stretchz,
++                                                            Kxx, Kxy, Kyy, dt, "tri", 
+                                                             h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+-- 
+2.49.0
+

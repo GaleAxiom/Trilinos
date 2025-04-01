@@ -1,0 +1,364 @@
+{
+    "version"   : 5,
+    "cmakeMinimumRequired" : {
+        "major" : 3,
+        "minor" : 25,
+        "patch" : 0
+    },
+    "configurePresets" : [
+        {
+            "name"        : "MKL",
+            "displayName" : "MKL",
+            "description" : "Configuration to inherit from if Intel MKL is used",
+            "environment" : {
+                "MKL_BASE_DIR" : "/opt/intel/mkl/2024.1"
+            },
+            "cacheVariables" : {
+                // BLAS-related settings
+                "BLAS_INCLUDE_DIRS"   : {"type" : "PATH"  , "value" : "$env{MKL_BASE_DIR}/include"},
+                "BLAS_LIBRARY_DIRS"   : {"type" : "PATH"  , "value" : "$env{MKL_BASE_DIR}/lib/intel64"},
+                // LAPACK-related settings
+                "LAPACK_INCLUDE_DIRS" : {"type" : "PATH"  , "value" : "$env{MKL_BASE_DIR}/include"},
+                "LAPACK_LIBRARY_DIRS" : {"type" : "PATH"  , "value" : "$env{MKL_BASE_DIR}/lib/intel64"},
+                // MKL-related settings
+                "TPL_ENABLE_MKL"      : "ON",
+                "MKL_INCLUDE_DIRS"    : {"type" : "PATH", "value" : "$env{MKL_BASE_DIR}/include"},
+                "MKL_LIBRARY_DIRS"    : {"type" : "PATH", "value" : "$env{MKL_BASE_DIR}/lib/intel64"}
+            }
+        },
+        {
+            "name"           : "MKL-parallel",
+            "displayName"    : "MKL-parallel",
+            "description"    : "Configuration to inherit from if threaded Intel MKL is used",
+            "inherits"       : "MKL",
+            "cacheVariables" : {
+                // BLAS-related settings
+                "BLAS_LIBRARY_NAMES"      : {"type" : "STRING", "value" : "mkl_intel_lp64;mkl_gnu_thread;mkl_core;pthread"},
+                // LAPACK-related settings
+                "LAPACK_LIBRARY_NAMES"    : {"type" : "STRING", "value" : "mkl_intel_lp64;mkl_gnu_thread;mkl_core;pthread"},
+                // MKL-related settings
+                "TpetraCore_Threaded_MKL" : "ON"
+            }
+        },
+        {
+            "name"           : "MKL-serial",
+            "displayName"    : "MKL-serial",
+            "description"    : "Configuration to inherit from if serial Intel MKL is used",
+            "inherits"       : "MKL",
+            "cacheVariables" : {
+                // BLAS-related settings
+                "BLAS_LIBRARY_NAMES"      : {"type" : "STRING", "value" : "mkl_intel_lp64;mkl_sequential;mkl_core;pthread"},
+                // LAPACK-related settings
+                "LAPACK_LIBRARY_NAMES"    : {"type" : "STRING", "value" : "mkl_intel_lp64;mkl_sequential;mkl_core;pthread"},
+                // MKL-related settings
+                "TpetraCore_Threaded_MKL" : "OFF"
+            }
+        },
+        {
+            "name"        : "default",
+            "displayName" : "default",
+            "description" : "This is our default CMake configuration for compiling the Trilinos project.",
+            "binaryDir"   : "${sourceDir}/build-with-${presetName}",
+            "environment" : {
+                "MPI_BASE_DIR" : "/opt/ompi-v5.0.5"
+            },
+            "cacheVariables" : {
+                // Basic configuration
+                "CMAKE_BUILD_TYPE"     : {"type" : "STRING"  , "value" : "Release"},
+                "CMAKE_CXX_STANDARD"   : "17",
+                "CMAKE_C_COMPILER_LAUNCHER" : "ccache",
+                "CMAKE_CXX_COMPILER_LAUNCHER" : "ccache",
+                "CMAKE_C_COMPILER"     : "gcc",
+                "CMAKE_CXX_COMPILER"   : "g++",
+                "CMAKE_INSTALL_PREFIX" : {"type" : "PATH"    , "value" : "/opt/Trilinos/${presetName}"},
+                // Export compile command for our test that check expected flags are passed to the compiler
+                "CMAKE_EXPORT_COMPILE_COMMANDS" : "ON",
+                // Trilinos global configuration
+                "Trilinos_ENABLE_Fortran"                : "OFF",
+                "Trilinos_ENABLE_EXPLICIT_INSTANTIATION" : "ON",
+                "Trilinos_ENABLE_EXAMPLES"               : "ON",
+                "Trilinos_VERBOSE_CONFIGURE"             : "OFF",
+                "Trilinos_ENABLE_OpenMP"                 : "ON",
+                // Set up how MPI programs are run during testing
+                "MPI_EXEC"                               : {"type" : "FILEPATH", "value" : "$env{MPI_BASE_DIR}/bin/mpirun"},
+                "MPI_EXEC_POST_NUMPROCS_FLAGS"           : {"type" : "STRING",   "value" : "--map-by;socket:PE=1;--bind-to;core"},
+                // Force build shared libraries
+                "BUILD_SHARED_LIBS"                      : "ON",
+                // Compiler flags to disable warnings
+                "CMAKE_C_FLAGS"                          : "-Wno-implicit-function-declaration",
+                // Enable HWLOC TPL
+                "TPL_ENABLE_HWLOC"                       : "ON",
+                // Enable/disable some Trilinos packages
+                "Trilinos_ENABLE_ALL_PACKAGES"           : "OFF",
+                "Trilinos_ENABLE_ALL_OPTIONAL_PACKAGES"  : "OFF",
+                "Trilinos_ENABLE_COMPLEX_DOUBLE"         : "ON",
+                "Trilinos_ENABLE_Amesos"                 : "OFF",
+                "Trilinos_ENABLE_Amesos2"                : "ON",
+                "Trilinos_ENABLE_Anasazi"                : "OFF",
+                "Trilinos_ENABLE_Epetra"                 : "OFF",
+                "Trilinos_ENABLE_EpetraExt"              : "OFF",
+                "Trilinos_ENABLE_Galeri"                 : "ON",
+                "Trilinos_ENABLE_Ifpack2"                : "ON",
+                "Trilinos_ENABLE_Intrepid"               : "OFF",
+                "Trilinos_ENABLE_Intrepid2"              : "OFF",
+                "Trilinos_ENABLE_Kokkos"                 : "ON",
+                "Trilinos_ENABLE_MueLu"                  : "ON",
+                "Trilinos_ENABLE_NOX"                    : "OFF",
+                "Trilinos_ENABLE_Panzer"                 : "OFF",
+                "Trilinos_ENABLE_PyTrilinos"             : "OFF",
+                "Trilinos_ENABLE_ROL"                    : "OFF",
+                "Trilinos_ENABLE_Sacado"                 : "OFF",
+                "Trilinos_ENABLE_SEACAS"                 : "OFF",
+                "Trilinos_ENABLE_ShyLU"                  : "OFF",
+                "Trilinos_ENABLE_ShyLU_NodeBasker"       : "OFF",
+                "Trilinos_ENABLE_ShyLU_DDCore"           : "OFF",
+                "Trilinos_ENABLE_ShyLU_DD"               : "OFF",
+                "Trilinos_ENABLE_ShyLU_DD_FROSch"        : "OFF",
+                "ShyLU_DD_ENABLE_TESTS"                  : "OFF",
+                "ShyLU_DD_ENABLE_EXAMPLES"               : "OFF",
+                "Trilinos_ENABLE_STK"                    : "OFF",
+                "Trilinos_ENABLE_Stokhos"                : "OFF",
+                "Trilinos_ENABLE_Teko"                   : "OFF",
+                "Trilinos_ENABLE_Tempus"                 : "OFF",
+                "Trilinos_ENABLE_Teuchos"                : "ON",
+                "Trilinos_ENABLE_Thyra"                  : "OFF",
+                "Trilinos_ENABLE_Tpetra"                 : "ON",
+                "Trilinos_ENABLE_TrilinosCouplings"      : "OFF",
+                "Trilinos_ENABLE_Xpetra"                 : "ON", // Xpetra is a required dependency of MueLu
+                "Trilinos_ENABLE_Zoltan2"                : "ON", // Zoltan2 is a recommended dependency of MueLu
+                // Amesos2 configuration
+                "Amesos2_ENABLE_TESTS"                   : "ON",
+                "Amesos2_ENABLE_Basker"                  : "ON",
+                "Amesos2_ENABLE_KLU2"                    : "ON",
+                "Amesos2_ENABLE_MUMPS"                   : "OFF",
+                "Amesos2_ENABLE_ShyLU_NodeTacho"         : "OFF",
+                "Amesos2_ENABLE_ShyLU_NodeBasker"        : "OFF",
+                "Amesos2_ENABLE_TIMERS"                  : "ON",
+                "Amesos2_ENABLE_LAPACK"                  : "ON",
+                // Anasazi configuration
+                "Anasazi_ENABLE_TESTS"                   : "ON",
+                // Galeri configuration
+                "Galeri_ENABLE_XPetra"                   : "ON",
+                // Kokkos configuration
+                "Kokkos_ENABLE_OPENMP"                   : "ON",
+                "Kokkos_ENABLE_IMPL_MDSPAN"              : "ON",
+                "Kokkos_ARCH_SKX"   : "ON",
+                // "Kokkos_SOURCE_DIR_OVERRIDE" : "packages/kokkos-sources-at-f7c6ab6afcfe7d3d25ec9e9a055ad0f774e3743e",
+                // Muelu configuration
+                "MueLu_ENABLE_Experimental"              : "ON",
+                "MueLu_ENABLE_Zoltan2Core"               : "ON",
+                "Xpetra_ENABLE_Experimental"             : "ON",
+                "MueLu_ENABLE_TESTS"                     : "ON",
+                // Panzer configuration
+                "Trilinos_ENABLE_PanzerDiscFE"           : "OFF",
+                "Panzer_ENABLE_TESTS"                    : "ON",
+                // Stokhos configuration
+                "Stokhos_ENABLE_EXAMPLES"                : "OFF",
+                "Stokhos_ENABLE_TESTS"                   : "ON",
+                "Stokhos_ENABLE_Ensemble_Reduction"      : "ON",
+                "Stokhos_ENABLE_PCE_Scalar_Type"         : "OFF",
+                "Stokhos_ENABLE_Ifpack2"                 : "ON",
+                // Teuchos configuration
+                "Teuchos_ENABLE_TESTS"                   : "OFF",
+                // Tpetra configuration
+                "Tpetra_INST_PTHREAD"                    : "OFF",
+                "Tpetra_INST_SERIAL"                     : "ON",
+                "Tpetra_INST_FLOAT"                      : "OFF",
+                "Tpetra_ENABLE_EXAMPLES"                 : "OFF",
+                "Tpetra_ENABLE_TESTS"                    : "ON",
+                "TpetraCore_ENABLE_TESTS"                : "ON",
+                "TpetraTSQR_ENABLE_TESTS"                : "OFF",
+                "Tpetra_INST_OPENMP"                     : "ON",
+                "Tpetra_ASSUME_GPU_AWARE_MPI"            : "ON",
+                // MPI-related settings
+                "TPL_ENABLE_MPI"            : "ON",
+                "MPI_USE_COMPILER_WRAPPERS" : "OFF",
+                "MPI_ALLOW_PACKAGE_PREFIND" : "ON",
+                "MPI_BASE_DIR"              : {"type" : "PATH", "value" : "$env{MPI_BASE_DIR}"},
+                // BLAS- and LAPACK-related settings
+                // Note that libraries are not specified here, so Trilinos will find system BLAS/LAPACK, unless specified in inheriting presets
+                "TPL_ENABLE_BLAS"      : "ON",
+                "TPL_ENABLE_LAPACK"    : "ON",
+                // METIS-related settings
+                "TPL_ENABLE_METIS"     : "ON",
+                // ParMETIS-related settings
+                "TPL_ENABLE_ParMETIS"  : "ON",
+                // SCOTCH-related settings
+                "TPL_ENABLE_Scotch"    : "OFF",
+                "Scotch_INCLUDE_DIRS" : {"type" : "PATH", "value" : "/usr/include/scotch"}
+            }
+        },
+        {
+            "name"        : "gcc-OpenMP",
+            "displayName" : "gcc-OpenMP",
+            "inherits"    : "default"
+        },
+        {
+            "name"        : "gcc-OpenMP-amd64",
+            "displayName" : "gcc-OpenMP-amd64",
+            "inherits"    : ["gcc-OpenMP", "MKL-parallel"]
+        },
+        {
+            "name"        : "gcc-OpenMP-arm64",
+            "displayName" : "gcc-OpenMP-arm64",
+            "inherits"    : "gcc-OpenMP", 
+            "cacheVariables" : {
+                "Kokkos_ARCH_SKX" : "OFF",  // Disable SKX architecture for ARM
+                "Kokkos_ARCH_ARMV8_THUNDERX2" : "ON"  // Use an appropriate ARM architecture instead
+            }
+        },
+        {
+            "name"        : "clang-OpenMP-amd64",
+            "displayName" : "clang-OpenMP-amd64",
+            "inherits"    : ["default", "MKL-serial"],
+            "cacheVariables" : {
+                "CMAKE_C_COMPILER"   : "clang",
+                "CMAKE_CXX_COMPILER" : "clang++"
+            }
+        },
+        {
+            "name"        : "Cuda-amd64",
+            "displayName" : "Cuda-amd64",
+            "inherits"    : ["default", "MKL-serial"],
+            "environment" : {
+                "CUDA_MANAGED_FORCE_DEVICE_ALLOC" : "1"
+            },
+            "cacheVariables" : {
+                // Kokkos configuration
+                "Kokkos_ENABLE_CUDA"                   : "ON",
+                "Kokkos_ENABLE_CUDA_LAMBDA"            : "ON",
+                "Kokkos_ENABLE_CUDA_CONSTEXPR"         : "ON",
+                "Kokkos_ENABLE_CUDA_UVM"               : "OFF",
+                "Kokkos_ARCH_VOLTA70"     : "ON",
+                "Kokkos_ENABLE_IMPL_CUDA_MALLOC_ASYNC" : "ON",
+                // Cuda-related settings
+                "TPL_ENABLE_CUDA"                         : "ON",
+                "TPL_ENABLE_CUSPARSE"                     : "ON",
+                "CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS" : "OFF"
+            }
+        },
+        {
+            "name"        : "gcc-Cuda-amd64",
+            "displayName" : "gcc-Cuda-amd64",
+            "inherits"    : "Cuda-amd64",
+            "environment" : {
+                "KOKKOS_PATH"                   : "${sourceDir}/packages/kokkos",
+                "NVCC_WRAPPER_DEFAULT_COMPILER" : "g++"
+            },
+            "cacheVariables" : {
+                "CMAKE_CXX_COMPILER" : "$env{KOKKOS_PATH}/bin/nvcc_wrapper"
+            }
+        },
+        {
+            "name"        : "clang-Cuda-amd64",
+            "displayName" : "clang-Cuda-amd64",
+            "inherits"    : "Cuda-amd64",
+            "cacheVariables" : {
+                "CMAKE_C_COMPILER"   : "clang",
+                "CMAKE_CXX_COMPILER" : "clang++"
+            }
+        },
+        {
+            "name"        : "ROCm-HIP-amd64",
+            "displayName" : "ROCm-HIP-amd64",
+            "inherits"    : ["default", "MKL-serial"],
+            "environment" : {
+                "ROCM_PATH" : "REPL_STR_ROCM_PATH"
+            },
+            "cacheVariables" : {
+                "CMAKE_C_COMPILER"   : "hipcc",
+                "CMAKE_CXX_COMPILER" : "hipcc",
+                // Kokkos configuration
+                "Kokkos_ENABLE_HIP"               : "ON",
+                "Kokkos_ARCH_REPL_STR_HIP_FAMILY" : "ON",
+                "Kokkos_ENABLE_ROCTHRUST"         : "OFF",
+                // Tpetra configuration
+                "Tpetra_INST_HIP"                 : "ON"
+            }
+        }
+    ],
+    "buildPresets" : [
+        {
+            "name"            : "default",
+            "configurePreset" : "default",
+            "inheritConfigureEnvironment" : true
+        },
+        {
+            "name"            : "gcc-OpenMP-arm64",
+            "configurePreset" : "gcc-OpenMP-arm64",
+            "displayName"     : "gcc-OpenMP-arm64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "gcc-OpenMP-amd64",
+            "configurePreset" : "gcc-OpenMP-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "clang-OpenMP-amd64",
+            "configurePreset" : "clang-OpenMP-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "gcc-Cuda-amd64",
+            "configurePreset" : "gcc-Cuda-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "clang-Cuda-amd64",
+            "configurePreset" : "clang-Cuda-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "ROCm-HIP-amd64",
+            "configurePreset" : "ROCm-HIP-amd64",
+            "inherits"        : "default"
+        }
+    ],
+    "testPresets" : [
+        {
+            "name"            : "default",
+            "configurePreset" : "default",
+            "inheritConfigureEnvironment" : true,
+            "environment" : {
+                "PATH"    : "$env{MPI_BASE_DIR}/bin${pathListSep}$penv{PATH}",
+                "OMP_NUM_THREADS" : "2",
+                "OMP_PROC_BIND" : "true",
+                "OMP_PLACES" : "threads"
+            },
+            "output"    : {"outputOnFailure": true},
+            "execution" : {"noTestsAction": "error", "stopOnFailure": false}
+        },
+        {
+            "name"            : "gcc-OpenMP-arm64",
+            "configurePreset" : "gcc-OpenMP-arm64",
+            "displayName"     : "gcc-OpenMP-arm64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "gcc-OpenMP-amd64",
+            "configurePreset" : "gcc-OpenMP-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "clang-OpenMP-amd64",
+            "configurePreset" : "clang-OpenMP-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "gcc-Cuda-amd64",
+            "configurePreset" : "gcc-Cuda-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "clang-Cuda-amd64",
+            "configurePreset" : "clang-Cuda-amd64",
+            "inherits"        : "default"
+        },
+        {
+            "name"            : "ROCm-HIP-amd64",
+            "configurePreset" : "ROCm-HIP-amd64",
+            "inherits"        : "default"
+        }
+    ]
+}
