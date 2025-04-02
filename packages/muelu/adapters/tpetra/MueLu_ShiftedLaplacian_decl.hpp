@@ -165,6 +165,7 @@ class ShiftedLaplacian : public BaseClass {
   void setupNormalRAP();
   // setupSolver: initialize Belos solver
   void setupSolver();
+  void setParametersSolver(Teuchos::RCP<Teuchos::ParameterList> paramList);
   // resetLinearProblem: for multiple frequencies;
   // reset the Belos operator if the frequency changes
   void resetLinearProblem();
