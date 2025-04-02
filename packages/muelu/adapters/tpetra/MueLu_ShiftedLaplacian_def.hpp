@@ -69,16 +69,14 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setParameters(
         Smoother_ = "superilu";
     } else if (stype == 10) {
         Smoother_ = "superlu";
+    } else if (stype == 11) {
+        Smoother_ = "klu2";
     } else {
         Smoother_ = "schwarz";
     }
     smoother_sweeps_     = paramList->get("MueLu: sweeps", 5);
     smoother_damping_    = paramList->get("MueLu: relax val", 1.0);
     ncycles_             = paramList->get("MueLu: cycles", 1);
-    // iters_               = paramList->get("MueLu: iterations", 500);
-    // solverType_          = paramList->get("MueLu: solver type", 1);
-    // restart_size_        = paramList->get("MueLu: restart size", 100);
-    // recycle_size_        = paramList->get("MueLu: recycle size", 25);
     isSymmetric_         = paramList->get("MueLu: symmetric", true);
     ilu_leveloffill_     = paramList->get("MueLu: level-of-fill", 5);
     ilu_abs_thresh_      = paramList->get("MueLu: abs thresh", 0.0);
@@ -267,20 +265,14 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         precType_ = "superlu";
         precList_.set("ColPerm", ilu_colperm_);
         precList_.set("DiagPivotThresh", ilu_diagpivotthresh_);
-    }
-    
-    // construct smoother
+    } else if (Smoother_ == "klu2") {
+        precType_ = "AMESOS2";
+        Teuchos::ParameterList& amesos2List = precList_.sublist("Amesos2");
+        amesos2List.sublist("KLU2");
+        }
     smooProto_ = rcp(new Ifpack2Smoother(precType_, precList_));
     smooFact_  = rcp(new SmootherFactory(smooProto_));
-#if defined(HAVE_MUELU_AMESOS2) and defined(HAVE_AMESOS2_SUPERLU)
-    coarsestSmooProto_ = rcp(new DirectSolver("Superlu", coarsestSmooList_));
-#elif defined(HAVE_MUELU_AMESOS2) and defined(HAVE_AMESOS2_KLU2)
     coarsestSmooProto_ = rcp(new DirectSolver("Klu", coarsestSmooList_));
-#elif defined(HAVE_MUELU_AMESOS2) and defined(HAVE_AMESOS2_SUPERLUDIST)
-    coarsestSmooProto_ = rcp(new DirectSolver("Superludist", coarsestSmooList_));
-#else
-    coarsestSmooProto_ = rcp(new Ifpack2Smoother(precType_, precList_));
-#endif
     coarsestSmooFact_ = rcp(new SmootherFactory(coarsestSmooProto_, Teuchos::null));
 
     // For setupSlowRAP and setupFastRAP, the prolongation/restriction matrices

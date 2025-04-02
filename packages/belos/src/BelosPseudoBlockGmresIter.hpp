@@ -651,7 +651,7 @@
     {
         // Initialize if needed
         if (!initialized_) {
-        initialize();
+            initialize();
         }
 
         // Constants
@@ -672,71 +672,71 @@
 
         // Copy current basis vector to U_vec
         for (int i = 0; i < numRHS_; ++i) {
-        index2[0] = i;
-        Teuchos::RCP<const MV> tmp_vec = MVT::CloneView(*V_[i], index);
-        Teuchos::RCP<MV> U_vec_view = MVT::CloneViewNonConst(*U_vec, index2);
-        MVT::MvAddMv(one, *tmp_vec, zero, *tmp_vec, *U_vec_view);
+            index2[0] = i;
+            Teuchos::RCP<const MV> tmp_vec = MVT::CloneView(*V_[i], index);
+            Teuchos::RCP<MV> U_vec_view = MVT::CloneViewNonConst(*U_vec, index2);
+            MVT::MvAddMv(one, *tmp_vec, zero, *tmp_vec, *U_vec_view);
         }
         
         // Main iteration loop
         // Continue until status test passes or basis is full
         while (stest_->checkStatus(this) != Passed && curDim_ < searchDim) {
-        // Increment iteration counter
-        iter_++;
-        
-        // Apply operator: AU_vec = A * U_vec
-        lp_->apply(*U_vec, *AU_vec);
-        
-        // Resize index for all previous vectors
-        int num_prev = curDim_ + 1;
-        index.resize(num_prev);
-        for (int i = 0; i < num_prev; ++i) {
-            index[i] = i;
-        }
-        
-        // Orthogonalize new Krylov vector for each right-hand side
-        for (int i = 0; i < numRHS_; ++i) {
-            // Get view of previous Krylov vectors
-            Teuchos::RCP<const MV> V_prev = MVT::CloneView(*V_[i], index);
-            Teuchos::Array<Teuchos::RCP<const MV>> V_array(1, V_prev);
+            // Increment iteration counter
+            iter_++;
             
-            // Get view of new candidate vector
-            index2[0] = i;
-            Teuchos::RCP<MV> V_new = MVT::CloneViewNonConst(*AU_vec, index2);
+            // Apply operator: AU_vec = A * U_vec
+            lp_->apply(*U_vec, *AU_vec);
             
-            // Get view of current Hessenberg column
-            Teuchos::RCP<Teuchos::SerialDenseMatrix<int, ScalarType>> h_new =
-            Teuchos::rcp(new Teuchos::SerialDenseMatrix<int, ScalarType>(
-                Teuchos::View, *H_[i], num_prev, 1, 0, curDim_
-            ));
-            Teuchos::Array<Teuchos::RCP<Teuchos::SerialDenseMatrix<int, ScalarType>>> h_array(1, h_new);
+            // Resize index for all previous vectors
+            int num_prev = curDim_ + 1;
+            index.resize(num_prev);
+            for (int i = 0; i < num_prev; ++i) {
+                index[i] = i;
+            }
             
-            // Get view for the subdiagonal element
-            Teuchos::RCP<Teuchos::SerialDenseMatrix<int, ScalarType>> r_new =
-            Teuchos::rcp(new Teuchos::SerialDenseMatrix<int, ScalarType>(
-                Teuchos::View, *H_[i], 1, 1, num_prev, curDim_
-            ));
+            // Orthogonalize new Krylov vector for each right-hand side
+            for (int i = 0; i < numRHS_; ++i) {
+                // Get view of previous Krylov vectors
+                Teuchos::RCP<const MV> V_prev = MVT::CloneView(*V_[i], index);
+                Teuchos::Array<Teuchos::RCP<const MV>> V_array(1, V_prev);
+                
+                // Get view of new candidate vector
+                index2[0] = i;
+                Teuchos::RCP<MV> V_new = MVT::CloneViewNonConst(*AU_vec, index2);
+                
+                // Get view of current Hessenberg column
+                Teuchos::RCP<Teuchos::SerialDenseMatrix<int, ScalarType>> h_new =
+                Teuchos::rcp(new Teuchos::SerialDenseMatrix<int, ScalarType>(
+                    Teuchos::View, *H_[i], num_prev, 1, 0, curDim_
+                ));
+                Teuchos::Array<Teuchos::RCP<Teuchos::SerialDenseMatrix<int, ScalarType>>> h_array(1, h_new);
+                
+                // Get view for the subdiagonal element
+                Teuchos::RCP<Teuchos::SerialDenseMatrix<int, ScalarType>> r_new =
+                Teuchos::rcp(new Teuchos::SerialDenseMatrix<int, ScalarType>(
+                    Teuchos::View, *H_[i], 1, 1, num_prev, curDim_
+                ));
+                
+                // Orthonormalize against previous vectors
+                ortho_->projectAndNormalize(*V_new, h_array, r_new, V_array);
+                
+                // Copy orthonormalized vector back to the Krylov basis
+                index2[0] = curDim_ + 1;
+                Teuchos::RCP<MV> tmp_vec = MVT::CloneViewNonConst(*V_[i], index2);
+                MVT::MvAddMv(one, *V_new, zero, *V_new, *tmp_vec);
+            }
             
-            // Orthonormalize against previous vectors
-            ortho_->projectAndNormalize(*V_new, h_array, r_new, V_array);
+            // Swap vectors for next iteration
+            // AU_vec is now normalized and ready to be the next U_vec
+            Teuchos::RCP<MV> tmp_AU_vec = U_vec;
+            U_vec = AU_vec;
+            AU_vec = tmp_AU_vec;
             
-            // Copy orthonormalized vector back to the Krylov basis
-            index2[0] = curDim_ + 1;
-            Teuchos::RCP<MV> tmp_vec = MVT::CloneViewNonConst(*V_[i], index2);
-            MVT::MvAddMv(one, *V_new, zero, *V_new, *tmp_vec);
-        }
-        
-        // Swap vectors for next iteration
-        // AU_vec is now normalized and ready to be the next U_vec
-        Teuchos::RCP<MV> tmp_AU_vec = U_vec;
-        U_vec = AU_vec;
-        AU_vec = tmp_AU_vec;
-        
-        // Update QR factorization of the Hessenberg matrix
-        updateLSQR();
-        
-        // Increment dimension
-        curDim_ += 1;
+            // Update QR factorization of the Hessenberg matrix
+            updateLSQR();
+            
+            // Increment dimension
+            curDim_ += 1;
         }
     }
 
@@ -748,7 +748,7 @@
         // Determine the current dimension to update
         int curDim = curDim_;
         if (dim >= curDim_ && dim < getMaxSubspaceDim()) {
-        curDim = dim;
+            curDim = dim;
         }
 
         // Zero constant for zeroing elements
