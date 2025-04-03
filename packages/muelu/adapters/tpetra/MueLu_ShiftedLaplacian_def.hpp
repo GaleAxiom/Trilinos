@@ -231,6 +231,10 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         precList_.set("fact: relax value", ilu_relax_val_);
     } else if (Smoother_ == "riluk") {
         precType_ = "RILUK";
+        precList_.set("fact: type", "KSPILUK");
+        // precList_.set("fact: kspiluk number-of-streams", 1);
+        // precList_.set("fact: kspiluk reordering in streams", true);
+
         precList_.set("fact: iluk level-of-fill", ilu_leveloffill_);
         precList_.set("fact: absolute threshold", ilu_abs_thresh_);
         precList_.set("fact: relative threshold", ilu_rel_thresh_);
@@ -392,11 +396,16 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setParametersS
     }
     
     // Basic solver parameters
-    iters_        = paramList->get("Solver: max iterations", 500);
-    tol_          = paramList->get("Solver: tolerance", 1.0e-6);
-    restart_size_ = paramList->get("Solver: restart size", 100);
-    recycle_size_ = paramList->get("Solver: recycle size", 25);
+    iters_        = paramList->get("Solver: max iterations", 1);
+    tol_          = paramList->get("Solver: tolerance", 1e-1);
+    restart_size_ = paramList->get("Solver: restart size", 1);
+    recycle_size_ = paramList->get("Solver: recycle size", 1);
     solverType_   = paramList->get("Solver: type", 1);
+
+    std::cout << "Solver type: " << solverType_ << std::endl;
+    std::cout << "Solver max iterations: " << iters_ << std::endl;
+    std::cout << "Solver tolerance: " << tol_ << std::endl;
+    std::cout << "Solver restart size: " << restart_size_ << std::endl;
     
     // Verbosity settings
     int verbosityLevel = paramList->get("Solver: verbosity", 1);
