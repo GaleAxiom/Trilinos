@@ -34,6 +34,11 @@ APPEND_SET(HEADERS
   Galeri_MapTraits.hpp
   Galeri_MultiVectorTraits.hpp
 
+  Galeri_Problem_Helmholtz.hpp
+  Galeri_HelmholtzFEM2DProblem.hpp
+  Galeri_HelmholtzFEM3DProblem.hpp
+  Galeri_VelocityModel.hpp
+
   Galeri_XpetraUtils.hpp
   Galeri_Problem.hpp
 
