@@ -224,6 +224,9 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         solverType_ = 10;
     } else if (Smoother_ == "ilut") {
         precType_ = "ILUT";
+        precList_.set("fact: type", "serial"); //serial or par_ilut
+        precList_.set("trisolver: type", "KSPTRSV"); //Internal or KSPTRSV
+        
         precList_.set("fact: ilut level-of-fill", ilu_leveloffill_);
         precList_.set("fact: absolute threshold", ilu_abs_thresh_);
         precList_.set("fact: relative threshold", ilu_rel_thresh_);
@@ -231,7 +234,7 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         precList_.set("fact: relax value", ilu_relax_val_);
     } else if (Smoother_ == "riluk") {
         precType_ = "RILUK";
-        precList_.set("fact: type", "KSPILUK");
+        precList_.set("fact: type", "KSPILUK"); //SERIAL or KSPILUK
         // precList_.set("fact: kspiluk number-of-streams", 1);
         // precList_.set("fact: kspiluk reordering in streams", true);
 
@@ -373,6 +376,7 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setupSolver() 
         LinearProblem_ = rcp(new LinearProblem);
     LinearProblem_->setOperator(TpetraA_);
     LinearProblem_->setRightPrec(MueLuOp_);
+
     if (SolverManager_ == Teuchos::null) {
         std::string solverName;
         SolverFactory_ = rcp(new SolverFactory());

@@ -127,8 +127,8 @@
                 "Trilinos_ENABLE_Xpetra"                 : "ON", // Xpetra is a required dependency of MueLu
                 "Trilinos_ENABLE_Zoltan2"                : "ON", // Zoltan2 is a recommended dependency of MueLu
                 // Amesos2 configuration
-                "Amesos2_ENABLE_TESTS"                   : "ON",
-                "Amesos2_ENABLE_Basker"                  : "ON",
+                "Amesos2_ENABLE_TESTS"                   : "OFF",
+                "Amesos2_ENABLE_Basker"                  : "OFF",
                 "Amesos2_ENABLE_KLU2"                    : "ON",
                 "Amesos2_ENABLE_MUMPS"                   : "OFF",
                 "Amesos2_ENABLE_ShyLU_NodeTacho"         : "OFF",
@@ -148,14 +148,14 @@
                 "MueLu_ENABLE_Experimental"              : "ON",
                 "MueLu_ENABLE_Zoltan2Core"               : "ON",
                 "Xpetra_ENABLE_Experimental"             : "ON",
-                "MueLu_ENABLE_TESTS"                     : "ON",
+                "MueLu_ENABLE_TESTS"                     : "OFF",
                 // Panzer configuration
                 "Trilinos_ENABLE_PanzerDiscFE"           : "OFF",
                 "Panzer_ENABLE_TESTS"                    : "ON",
                 // Stokhos configuration
                 "Stokhos_ENABLE_EXAMPLES"                : "OFF",
-                "Stokhos_ENABLE_TESTS"                   : "ON",
-                "Stokhos_ENABLE_Ensemble_Reduction"      : "ON",
+                "Stokhos_ENABLE_TESTS"                   : "OFF",
+                "Stokhos_ENABLE_Ensemble_Reduction"      : "OFF",
                 "Stokhos_ENABLE_PCE_Scalar_Type"         : "OFF",
                 "Stokhos_ENABLE_Ifpack2"                 : "ON",
                 // Teuchos configuration
@@ -165,8 +165,8 @@
                 "Tpetra_INST_SERIAL"                     : "ON",
                 "Tpetra_INST_FLOAT"                      : "OFF",
                 "Tpetra_ENABLE_EXAMPLES"                 : "OFF",
-                "Tpetra_ENABLE_TESTS"                    : "ON",
-                "TpetraCore_ENABLE_TESTS"                : "ON",
+                "Tpetra_ENABLE_TESTS"                    : "OFF",
+                "TpetraCore_ENABLE_TESTS"                : "OFF",
                 "TpetraTSQR_ENABLE_TESTS"                : "OFF",
                 "Tpetra_INST_OPENMP"                     : "ON",
                 "Tpetra_ASSUME_GPU_AWARE_MPI"            : "ON",
