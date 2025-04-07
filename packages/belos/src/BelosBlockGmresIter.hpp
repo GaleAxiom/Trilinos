@@ -33,6 +33,9 @@
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_TimeMonitor.hpp"
 
+#include "KokkosKernels_helpers.hpp"
+#include "KokkosBlas1_rotg.hpp"
+
 /*!
   \class Belos::BlockGmresIter
 
@@ -777,7 +780,17 @@ class BlockGmresIter : virtual public GmresIteration<ScalarType,MV,OP> {
       //
       // Calculate new Givens rotation
       //
-      blas.ROTG( &(*R_)(curDim,curDim), &(*R_)(curDim+1,curDim), &cs[curDim], &sn[curDim] );
+      if constexpr (std::is_same_v<ScalarType, std::complex<double>>)
+          KokkosBlas::Impl::Rotg_Invoke(
+              Kokkos::DefaultHostExecutionSpace{},
+              Kokkos::subview(Kokkos::View<Kokkos::complex<double>*, Kokkos::HostSpace>(reinterpret_cast<Kokkos::complex<double>*>(&(*R_)(curDim,curDim)), 1), 0),
+              Kokkos::subview(Kokkos::View<Kokkos::complex<double>*, Kokkos::HostSpace>(reinterpret_cast<Kokkos::complex<double>*>(&(*R_)(curDim+1,curDim)), 1), 0),
+              Kokkos::subview(Kokkos::View<MagnitudeType*, Kokkos::HostSpace>(&cs[curDim], 1), 0),
+              Kokkos::subview(Kokkos::View<Kokkos::complex<double>*, Kokkos::HostSpace>(reinterpret_cast<Kokkos::complex<double>*>(&sn[curDim]), 1), 0)
+          );
+      else {
+          blas.ROTG( &(*R_)(curDim,curDim), &(*R_)(curDim+1,curDim), &cs[curDim], &sn[curDim] );
+      }
       (*R_)(curDim+1,curDim) = zero;
       //
       // Update RHS w/ new transformation
