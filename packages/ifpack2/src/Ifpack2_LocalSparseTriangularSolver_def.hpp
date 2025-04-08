@@ -981,7 +981,7 @@ localTriangularSolve (const MV& Y,
   const size_t numVecs = std::min (X.getNumVectors (), Y.getNumVectors ());
 
 
-  //TODO : Check if we enter any of the Kokkos Kernels Sptrsv
+  //! We enter here if we are using Kokkos Kernels Sptrsv
   if (Teuchos::nonnull(kh_) && this->isKokkosKernelsSptrsv_ && trans == "N")
   {
     // std::cout << "Went into Kokkos Kernels Sptrsv 1" << std::endl;
@@ -1000,7 +1000,7 @@ localTriangularSolve (const MV& Y,
       auto Y_lcl_1d = Kokkos::subview (Y_lcl, Kokkos::ALL (), 0);
       KokkosSparse::Experimental::sptrsv_solve(kh_.getRawPtr(), ptr, ind, val, Y_lcl_1d, X_lcl_1d);
 
-      // TODO is this fence needed... Probably not...
+      // TODO is this fence needed... Probably not as it does not causes any issue.
       // typename k_handle::HandleExecSpace().fence();
     }
   } // End using regular interface of Kokkos Kernels Sptrsv

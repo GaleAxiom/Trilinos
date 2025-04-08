@@ -1291,6 +1291,7 @@ apply (const Tpetra::MultiVector<scalar_type,local_ordinal_type,global_ordinal_t
         Kokkos::fence();
       }
       else {
+        //! Need to have NO_TRANS to trigger the use of the sptrsv solver using cusparse
         if (mode == Teuchos::NO_TRANS) { // Solve L (D (U Y)) = X for Y.
 #if defined(KOKKOSKERNELS_ENABLE_TPL_CUSPARSE) && defined(KOKKOS_ENABLE_CUDA) && (CUDA_VERSION >= 11030)
           //NOTE (Nov-15-2022):
