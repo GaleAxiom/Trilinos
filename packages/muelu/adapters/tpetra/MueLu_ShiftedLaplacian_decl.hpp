@@ -118,6 +118,8 @@ class ShiftedLaplacian : public BaseClass {
     , ilu_drop_tol_(0.01)
     , ilu_fill_tol_(0.01)
     , ilu_relax_val_(1.0)
+    , fact_type_("serial")
+    , trisolver_type_("Internal")
     , ilu_rowperm_("LargeDiag")
     , ilu_colperm_("COLAMD")
     , ilu_drop_rule_("DROP_BASIC")
@@ -213,6 +215,7 @@ class ShiftedLaplacian : public BaseClass {
   int krylov_preconditioner_;
   double ilu_leveloffill_, ilu_abs_thresh_, ilu_rel_thresh_, ilu_diagpivotthresh_;
   double ilu_drop_tol_, ilu_fill_tol_, ilu_relax_val_;
+  std::string fact_type_, trisolver_type_;
   std::string ilu_rowperm_, ilu_colperm_, ilu_drop_rule_, ilu_normtype_, ilu_milutype_;
   int schwarz_overlap_;
   bool schwarz_usereorder_;

@@ -84,6 +84,8 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setParameters(
     ilu_diagpivotthresh_ = paramList->get("MueLu: piv thresh", 0.1);
     ilu_drop_tol_        = paramList->get("MueLu: drop tol", 0.01);
     ilu_fill_tol_        = paramList->get("MueLu: fill tol", 0.01);
+    fact_type_           = paramList->get("MueLu: fact type", "serial");
+    trisolver_type_      = paramList->get("MueLu: trisolver type", "Internal");
     schwarz_overlap_     = paramList->get("MueLu: overlap", 0);
     schwarz_usereorder_  = paramList->get("MueLu: use reorder", true);
     int combinemode      = paramList->get("MueLu: combine mode", 1);
@@ -224,8 +226,8 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         solverType_ = 10;
     } else if (Smoother_ == "ilut") {
         precType_ = "ILUT";
-        precList_.set("fact: type", "serial"); //serial or par_ilut
-        precList_.set("trisolver: type", "KSPTRSV"); //Internal or KSPTRSV
+        precList_.set("fact: type", fact_type_); //serial or par_ilut
+        precList_.set("trisolver: type", trisolver_type_); //Internal or KSPTRSV
         
         precList_.set("fact: ilut level-of-fill", ilu_leveloffill_);
         precList_.set("fact: absolute threshold", ilu_abs_thresh_);
@@ -234,11 +236,11 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         precList_.set("fact: relax value", ilu_relax_val_);
     } else if (Smoother_ == "riluk") {
         precType_ = "RILUK";
-        precList_.set("fact: type", "KSPILUK"); //SERIAL or KSPILUK
+        precList_.set("fact: type", fact_type_); //SERIAL or KSPILUK
         // precList_.set("fact: kspiluk number-of-streams", 1);
         // precList_.set("fact: kspiluk reordering in streams", true);
         
-        precList_.set("trisolver: type", "KSPTRSV"); //Internal or KSPTRSV
+        precList_.set("trisolver: type", trisolver_type_); //Internal or KSPTRSV
 
         precList_.set("fact: iluk level-of-fill", ilu_leveloffill_);
         precList_.set("fact: absolute threshold", ilu_abs_thresh_);
