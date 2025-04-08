@@ -84,11 +84,16 @@ int main(int argc, char *argv[]) {
     PMLYR = 10;
     PMLZL = 10;
     PMLZR = 10;
-    double omega, shift;
+    double omega, shift, Kxx, Kxy, Kyy, dt;
     omega = 20.0 * M_PI;
     shift = 0.5;
+    Kxx = 0.0;
+    Kxy = 0.0;
+    Kyy = 0.0;
+    dt = 0.0;
 
     Galeri::Xpetra::Parameters<GO> matrixParameters(clp, nx, ny, nz, "Helmholtz1D", 0, stretchx, stretchy, stretchz,
+                                                    Kxx, Kxy, Kyy, dt, "tri", 
                                                     h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift);
     Xpetra::Parameters xpetraParameters(clp);
 

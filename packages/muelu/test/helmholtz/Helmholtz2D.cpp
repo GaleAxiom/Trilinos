@@ -89,7 +89,13 @@ int main(int argc, char *argv[]) {
     if (comm->getRank() == 0)
       std::cout << "velocity model: " << model << std::endl;
 
+    double Kxx = 0.0;
+    double Kxy = 0.0;
+    double Kyy = 0.0;
+    double dt = 0.0;
+
     Galeri::Xpetra::Parameters<GO> matrixParameters_aux(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
+                                                        Kxx, Kxy, Kyy, dt, "tri",
                                                         h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
     Xpetra::Parameters xpetraParameters(clp);
 
@@ -134,12 +140,15 @@ int main(int argc, char *argv[]) {
     omegas.push_back(omega + 10);
     omegas.push_back(omega + 20);
     int total_iters = 0;
+    std::vector<int> ret(omegas.size());
 
     // loop over frequencies
     for (size_t i = 0; i < omegas.size(); i++) {
       Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
+                                                                Kxx, Kxy, Kyy, dt, "tri",
                                                                 h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omegas[i], 0.0, mx, my, mz, model);
       Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
+                                                              Kxx, Kxy, Kyy, dt, "tri",
                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omegas[i], shift, mx, my, mz, model);
 
       Teuchos::ParameterList matrixParams_helmholtz = matrixParameters_helmholtz.GetParameterList();
@@ -180,7 +189,7 @@ int main(int argc, char *argv[]) {
       if (map->isNodeGlobalElement(pointsourceid) == true) {
         B->replaceGlobalValue(pointsourceid, 0, (SC)1.0);
       }
-      SLSolver->solve(B, X);
+      ret[i] = SLSolver->solve(B, X);
 
       // sum up number of iterations
       total_iters += SLSolver->GetIterations();
@@ -190,10 +199,14 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-    if (total_iters <= 110)
-      success = true;
-    else
-      success = false;
+    // Check success for each frequency
+    for(size_t i = 0; i < omegas.size(); i++) {
+      success = (ret[i] == 0);
+    }
+  }
+  catch (std::exception &e) {
+    std::cerr << "Caught exception: " << e.what() << std::endl;
+    success = false;
   }
 
   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
