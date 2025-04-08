@@ -1,0 +1,530 @@
+From 0f5b0361ffaf11093fea64b98d974f9b3942759e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Distr=C3=A9e=20Florent?= <flodistree@gmail.com>
+Date: Tue, 8 Apr 2025 09:31:25 +0000
+Subject: [PATCH] commit for patch
+
+---
+ .../Galeri_HelmholtzFEM2DProblem.hpp          | 27 +++++++++------
+ .../Galeri_HelmholtzFEM3DProblem.hpp          | 30 +++++++++++++----
+ packages/muelu/adapters/CMakeLists.txt        | 10 ++++--
+ .../tpetra/MueLu_ShiftedLaplacian_decl.hpp    |  6 ----
+ .../tpetra/MueLu_ShiftedLaplacian_def.hpp     | 33 ++-----------------
+ packages/muelu/test/helmholtz/CMakeLists.txt  |  2 +-
+ packages/muelu/test/helmholtz/Helmholtz1D.cpp |  7 +++-
+ packages/muelu/test/helmholtz/Helmholtz2D.cpp | 23 ++++++++++---
+ packages/muelu/test/helmholtz/Helmholtz3D.cpp | 18 +++++++---
+ .../muelu/test/helmholtz/HelmholtzFEM2D.cpp   | 14 ++++++--
+ .../muelu/test/helmholtz/HelmholtzFEM3D.cpp   | 14 ++++++--
+ 11 files changed, 115 insertions(+), 69 deletions(-)
+
+diff --git a/packages/galeri/src-xpetra/Galeri_HelmholtzFEM2DProblem.hpp b/packages/galeri/src-xpetra/Galeri_HelmholtzFEM2DProblem.hpp
+index 02b4de39229..2f5fdb96e23 100644
+--- a/packages/galeri/src-xpetra/Galeri_HelmholtzFEM2DProblem.hpp
++++ b/packages/galeri/src-xpetra/Galeri_HelmholtzFEM2DProblem.hpp
+@@ -36,10 +36,23 @@ namespace Galeri {
+         hy_          = list.get("stretchy", 1.0);
+         px_          = list.get("px", 1);
+         py_          = list.get("py", 1);
+-        nx_          = list.get("nx", -1);
+-        ny_          = list.get("ny", -1);
+-        mx_          = list.get("mx", 1);
+-        my_          = list.get("my", 1);
++        if (list.isType<int>("nx"))
++          nx_ = Teuchos::as<GO>(list.get("nx", -1));
++        else
++          nx_ = list.get<GO>("nx", -1);
++        if (list.isType<int>("ny"))
++          ny_ = Teuchos::as<GO>(list.get("ny", -1));
++        else
++          ny_ = list.get<GO>("ny", -1);
++        if (list.isType<int>("mx"))
++          mx_ = Teuchos::as<GO>(list.get("mx", -1));
++        else
++          mx_ = list.get<GO>("mx", -1);
++        if (list.isType<int>("my"))
++          my_ = Teuchos::as<GO>(list.get("my", -1));
++        else
++          my_ = list.get<GO>("my", -1);
++
+         omega_       = list.get("omega", 2.0*M_PI);
+         shift_       = list.get("shift", 0.0);
+         delta_       = list.get("delta", 2.0);
+@@ -183,9 +196,6 @@ namespace Galeri {
+         Teuchos::Array<GO> elemDofs(numDofPerElem);
+         for (size_t j = 0; j < numDofPerElem; j++) {
+           elemDofs[j] = local2Global_[elemNodes[j]];
+-          if(local2Global_[elemNodes[j]]>9999) {
+-            std::cout<<"index "<<local2Global_[elemNodes[j]]<<std::endl;
+-          }
+         }
+ 
+         // Insert KE into the global matrix
+@@ -267,9 +277,6 @@ namespace Galeri {
+         Teuchos::Array<GO> elemDofs(numDofPerElem);
+         for (size_t j = 0; j < numDofPerElem; j++) {
+           elemDofs[j] = local2Global_[elemNodes[j]];
+-          if(local2Global_[elemNodes[j]]>9999) {
+-            std::cout<<"index "<<local2Global_[elemNodes[j]]<<std::endl;
+-          }
+         }
+ 
+         // Insert KE and ME into the global matrices
+diff --git a/packages/galeri/src-xpetra/Galeri_HelmholtzFEM3DProblem.hpp b/packages/galeri/src-xpetra/Galeri_HelmholtzFEM3DProblem.hpp
+index cdb4cabcde3..b6998225da9 100644
+--- a/packages/galeri/src-xpetra/Galeri_HelmholtzFEM3DProblem.hpp
++++ b/packages/galeri/src-xpetra/Galeri_HelmholtzFEM3DProblem.hpp
+@@ -38,12 +38,30 @@ namespace Galeri {
+         px_          = list.get("px", 1);
+         py_          = list.get("py", 1);
+         pz_          = list.get("pz", 1);
+-        nx_          = list.get("nx", -1);
+-        ny_          = list.get("ny", -1);
+-        nz_          = list.get("nz", -1);
+-        mx_          = list.get("mx", 1);
+-        my_          = list.get("my", 1);
+-        mz_          = list.get("mz", 1);
++        if (list.isType<int>("nx"))
++          nx_          = Teuchos::as<GO>(list.get("nx", -1));
++        else
++          nx_ = list.get<GO>("nx", -1);
++        if (list.isType<int>("ny"))
++          ny_ = Teuchos::as<GO>(list.get("ny", -1));
++        else
++          ny_ = list.get<GO>("ny", -1);
++        if (list.isType<int>("nz"))
++          nz_ = Teuchos::as<GO>(list.get("nz", -1));
++        else
++          nz_ = list.get<GO>("nz", -1);
++        if (list.isType<int>("mx"))
++          mx_ = Teuchos::as<GO>(list.get("mx", -1));
++        else
++          mx_ = list.get<GO>("mx", -1);
++        if (list.isType<int>("my"))
++          my_ = Teuchos::as<GO>(list.get("my", -1));
++        else
++          my_ = list.get<GO>("my", -1);
++        if (list.isType<int>("mz"))
++          mz_ = Teuchos::as<GO>(list.get("mz", -1));
++        else
++          mz_ = list.get<GO>("mz", -1);
+         omega_       = list.get("omega", 2.0*M_PI);
+         shift_       = list.get("shift", 0.0);
+         delta_       = list.get("delta", 2.0);
+diff --git a/packages/muelu/adapters/CMakeLists.txt b/packages/muelu/adapters/CMakeLists.txt
+index 7a4314b7455..4519477e67c 100644
+--- a/packages/muelu/adapters/CMakeLists.txt
++++ b/packages/muelu/adapters/CMakeLists.txt
+@@ -12,7 +12,6 @@ IF(${PACKAGE_NAME}_ENABLE_EXPLICIT_INSTANTIATION)
+   APPEND_GLOB(HEADERS ${BDIR}/MueLu_ExplicitInstantiation.hpp)
+ ENDIF()
+ 
+-ASSERT_DEFINED(Tpetra_INST_INT_INT)
+ #
+ # Belos
+ #
+@@ -61,7 +60,7 @@ APPEND_SET(HEADERS
+   tpetra/MueLu_TpetraOperatorAsRowMatrix.hpp
+ )
+ 
+-IF (${PACKAGE_NAME}_ENABLE_Belos AND ${PACKAGE_NAME}_ENABLE_Ifpack2 AND Tpetra_INST_INT_INT AND ${PACKAGE_NAME}_ENABLE_Experimental)
++IF (${PACKAGE_NAME}_ENABLE_Belos AND ${PACKAGE_NAME}_ENABLE_Ifpack2 AND ${PACKAGE_NAME}_ENABLE_Experimental AND HAVE_TEUCHOS_COMPLEX)
+ 
+   APPEND_SET(HEADERS
+     tpetra/MueLu_ShiftedLaplacian_decl.hpp
+@@ -176,6 +175,13 @@ IF(${PACKAGE_NAME}_ENABLE_EXPLICIT_INSTANTIATION)
+     )
+   ENDIF()
+ 
++  IF (${PACKAGE_NAME}_ENABLE_Belos AND ${PACKAGE_NAME}_ENABLE_Ifpack2 AND ${PACKAGE_NAME}_ENABLE_Experimental AND HAVE_TEUCHOS_COMPLEX)
++    APPEND_GLOBAL_SET(MUELUADAPTERS_ETI_CLASSES
++      MueLu::ShiftedLaplacianOperator
++      MueLu::ShiftedLaplacian
++    )
++  ENDIF()
++
+   # Set the list of classes in MueLu adapters that are templated on <LO, GO, Node> for
+   # which we want to do ETI using this system.
+   GLOBAL_SET(MUELUADAPTERS_ETI_LO_GO_CLASSES
+diff --git a/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_decl.hpp b/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_decl.hpp
+index 9fb1b120cbf..95559359ff4 100644
+--- a/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_decl.hpp
++++ b/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_decl.hpp
+@@ -46,12 +46,10 @@
+ #include <MueLu_Utilities_fwd.hpp>
+ 
+ // Belos
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+ #include <BelosConfigDefs.hpp>
+ #include <BelosLinearProblem.hpp>
+ #include <BelosSolverFactory.hpp>
+ #include <BelosTpetraAdapter.hpp>
+-#endif
+ 
+ #include "Kokkos_Core.hpp"
+ 
+@@ -77,11 +75,9 @@ class ShiftedLaplacian : public BaseClass {
+   typedef Tpetra::Vector<SC, LO, GO, NO> TVEC;
+   typedef Tpetra::MultiVector<SC, LO, GO, NO> TMV;
+   typedef Tpetra::Operator<SC, LO, GO, NO> OP;
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   typedef Belos::LinearProblem<SC, TMV, OP> LinearProblem;
+   typedef Belos::SolverManager<SC, TMV, OP> SolverManager;
+   typedef Belos::SolverFactory<SC, TMV, OP> SolverFactory;
+-#endif
+ 
+  public:
+   /*
+@@ -259,13 +255,11 @@ class ShiftedLaplacian : public BaseClass {
+   RCP<MueLu::ShiftedLaplacianOperator<SC, LO, GO, NO> > MueLuOp_;
+   RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> > TpetraA_;
+ 
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   // Belos Linear Problem and Solver
+   RCP<LinearProblem> LinearProblem_;
+   RCP<SolverManager> SolverManager_;
+   RCP<SolverFactory> SolverFactory_;
+   RCP<Teuchos::ParameterList> BelosList_;
+-#endif
+ };
+ 
+ }  // namespace MueLu
+diff --git a/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_def.hpp b/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_def.hpp
+index 13de4708e53..404fc59ad39 100644
+--- a/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_def.hpp
++++ b/packages/muelu/adapters/tpetra/MueLu_ShiftedLaplacian_def.hpp
+@@ -102,21 +102,15 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setProblemMatr
+   A_ = A;
+   if (A_ != Teuchos::null)
+     TpetraA_ = toTpetra(A_);
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   if (LinearProblem_ != Teuchos::null)
+     LinearProblem_->setOperator(TpetraA_);
+-#else
+-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
+-#endif
+ }
+ 
+ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
+ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setProblemMatrix(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> >& TpetraA) {
+   TpetraA_ = TpetraA;
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   if (LinearProblem_ != Teuchos::null)
+     LinearProblem_->setOperator(TpetraA_);
+-#endif
+ }
+ 
+ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
+@@ -274,7 +268,7 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
+     precList_.set("ColPerm", ilu_colperm_);
+     precList_.set("DiagPivotThresh", ilu_diagpivotthresh_);
+   }
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
++
+   // construct smoother
+   smooProto_ = rcp(new Ifpack2Smoother(precType_, precList_));
+   smooFact_  = rcp(new SmootherFactory(smooProto_));
+@@ -337,9 +331,6 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
+   BelosList_->set("Output Style", Belos::Brief);
+   BelosList_->set("Num Blocks", restart_size_);
+   BelosList_->set("Num Recycled Blocks", recycle_size_);
+-#else
+-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
+-#endif
+ }
+ 
+ // setup coarse grids for new frequency
+@@ -389,7 +380,6 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setupNormalRAP
+ 
+ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
+ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setupSolver() {
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   // Define Preconditioner and Operator
+   MueLuOp_ = rcp(new MueLu::ShiftedLaplacianOperator<SC, LO, GO, NO>(Hierarchy_, A_, ncycles_, subiters_, option_, tol_));
+   // Belos Linear Problem
+@@ -410,9 +400,6 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setupSolver()
+     SolverManager_ = SolverFactory_->create(solverName, BelosList_);
+     SolverManager_->setProblem(LinearProblem_);
+   }
+-#else
+-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
+-#endif
+ }
+ 
+ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
+@@ -427,15 +414,11 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::resetLinearPro
+ // Solve phase
+ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
+ int ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::solve(const RCP<TMV> B, RCP<TMV>& X) {
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   // Set left and right hand sides for Belos
+   LinearProblem_->setProblem(X, B);
+   // iterative solve
+-  SolverManager_->solve();
+-#else
+-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
+-#endif
+-  return 0;
++  Belos::ReturnType ret = SolverManager_->solve();
++  return (int)ret;
+ }
+ 
+ // Solve phase
+@@ -459,13 +442,8 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::multigrid_appl
+ // Get most recent iteration count
+ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
+ int ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::GetIterations() {
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   int numiters = SolverManager_->getNumIters();
+   return numiters;
+-#else
+-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
+-  return -1;
+-#endif
+ }
+ 
+ // Get most recent solver tolerance achieved
+@@ -473,13 +451,8 @@ template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
+ typename Teuchos::ScalarTraits<Scalar>::magnitudeType
+ ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::GetResidual() {
+   typedef typename Teuchos::ScalarTraits<Scalar>::magnitudeType MT;
+-#ifdef HAVE_MUELU_TPETRA_INST_INT_INT
+   MT residual = SolverManager_->achievedTol();
+   return residual;
+-#else
+-  TEUCHOS_TEST_FOR_EXCEPTION(true, Exceptions::RuntimeError, "ShiftedLaplacian only available with Tpetra and GO=int enabled.");
+-  return MT(-1.0);
+-#endif
+ }
+ 
+ }  // namespace MueLu
+diff --git a/packages/muelu/test/helmholtz/CMakeLists.txt b/packages/muelu/test/helmholtz/CMakeLists.txt
+index f011c806f0a..467aaa6c66f 100644
+--- a/packages/muelu/test/helmholtz/CMakeLists.txt
++++ b/packages/muelu/test/helmholtz/CMakeLists.txt
+@@ -17,7 +17,7 @@ TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../../adapters/belos)
+ TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../unit_tests)
+ 
+ # mfh 18 Aug 2015: All of the Helmholtz examples require complex arithmetic.
+-IF (${PACKAGE_NAME}_ENABLE_Zoltan2Core AND HAVE_MUELU_COMPLEX)
++IF (${PACKAGE_NAME}_ENABLE_Zoltan2Core AND HAVE_TEUCHOS_COMPLEX)
+ 
+   TRIBITS_ADD_EXECUTABLE(
+     Helmholtz1D
+diff --git a/packages/muelu/test/helmholtz/Helmholtz1D.cpp b/packages/muelu/test/helmholtz/Helmholtz1D.cpp
+index cd78abd7067..5ed45d882f4 100644
+--- a/packages/muelu/test/helmholtz/Helmholtz1D.cpp
++++ b/packages/muelu/test/helmholtz/Helmholtz1D.cpp
+@@ -84,11 +84,16 @@ int main(int argc, char *argv[]) {
+     PMLYR = 10;
+     PMLZL = 10;
+     PMLZR = 10;
+-    double omega, shift;
++    double omega, shift, Kxx, Kxy, Kyy, dt;
+     omega = 20.0 * M_PI;
+     shift = 0.5;
++    Kxx = 0.0;
++    Kxy = 0.0;
++    Kyy = 0.0;
++    dt = 0.0;
+ 
+     Galeri::Xpetra::Parameters<GO> matrixParameters(clp, nx, ny, nz, "Helmholtz1D", 0, stretchx, stretchy, stretchz,
++                                                    Kxx, Kxy, Kyy, dt, "tri", 
+                                                     h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+diff --git a/packages/muelu/test/helmholtz/Helmholtz2D.cpp b/packages/muelu/test/helmholtz/Helmholtz2D.cpp
+index 86eb9f47d6d..d819f001e02 100644
+--- a/packages/muelu/test/helmholtz/Helmholtz2D.cpp
++++ b/packages/muelu/test/helmholtz/Helmholtz2D.cpp
+@@ -89,7 +89,13 @@ int main(int argc, char *argv[]) {
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
+ 
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
++
+     Galeri::Xpetra::Parameters<GO> matrixParameters_aux(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
++                                                        Kxx, Kxy, Kyy, dt, "tri",
+                                                         h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+@@ -134,12 +140,15 @@ int main(int argc, char *argv[]) {
+     omegas.push_back(omega + 10);
+     omegas.push_back(omega + 20);
+     int total_iters = 0;
++    std::vector<int> ret(omegas.size());
+ 
+     // loop over frequencies
+     for (size_t i = 0; i < omegas.size(); i++) {
+       Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
++                                                                Kxx, Kxy, Kyy, dt, "tri",
+                                                                 h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omegas[i], 0.0, mx, my, mz, model);
+       Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "Helmholtz2D", 0, stretchx, stretchy, stretchz,
++                                                              Kxx, Kxy, Kyy, dt, "tri",
+                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omegas[i], shift, mx, my, mz, model);
+ 
+       Teuchos::ParameterList matrixParams_helmholtz = matrixParameters_helmholtz.GetParameterList();
+@@ -180,7 +189,7 @@ int main(int argc, char *argv[]) {
+       if (map->isNodeGlobalElement(pointsourceid) == true) {
+         B->replaceGlobalValue(pointsourceid, 0, (SC)1.0);
+       }
+-      SLSolver->solve(B, X);
++      ret[i] = SLSolver->solve(B, X);
+ 
+       // sum up number of iterations
+       total_iters += SLSolver->GetIterations();
+@@ -190,10 +199,14 @@ int main(int argc, char *argv[]) {
+ #endif
+     }
+ 
+-    if (total_iters <= 110)
+-      success = true;
+-    else
+-      success = false;
++    // Check success for each frequency
++    for(size_t i = 0; i < omegas.size(); i++) {
++      success = (ret[i] == 0);
++    }
++  }
++  catch (std::exception &e) {
++    std::cerr << "Caught exception: " << e.what() << std::endl;
++    success = false;
+   }
+ 
+   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
+diff --git a/packages/muelu/test/helmholtz/Helmholtz3D.cpp b/packages/muelu/test/helmholtz/Helmholtz3D.cpp
+index 4ed06ec6e77..fd91c2d1ae5 100644
+--- a/packages/muelu/test/helmholtz/Helmholtz3D.cpp
++++ b/packages/muelu/test/helmholtz/Helmholtz3D.cpp
+@@ -87,11 +87,18 @@ int main(int argc, char *argv[]) {
+     inputfile >> model;
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
++    
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
+ 
+     Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "Helmholtz3D", 0, stretchx, stretchy, stretchz,
+-                                                              h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
++      +                                                        Kxx, Kxy, Kyy, dt, "tri", 
++      +                                                        h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
+     Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "Helmholtz3D", 0, stretchx, stretchy, stretchz,
+-                                                            h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
++      +                                                        Kxx, Kxy, Kyy, dt, "tri", 
++      +                                                        h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+     //****************************************//
+@@ -165,7 +172,7 @@ int main(int argc, char *argv[]) {
+ 
+     tm = rcp(new TimeMonitor(*TimeMonitor::getNewTimer("ScalingTest: 4 - Belos Solve")));
+ 
+-    SLSolver->solve(B, X);
++    int ret = SLSolver->solve(B, X);
+ 
+     tm = Teuchos::null;
+ 
+@@ -173,7 +180,10 @@ int main(int argc, char *argv[]) {
+ 
+     TimeMonitor::summarize();
+ 
+-    success = true;
++    if(ret == 0)
++      success = true;
++    else
++      success = false;
+   }
+   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
+ 
+diff --git a/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp b/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp
+index b224b5fc3f2..d03b42511d4 100644
+--- a/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp
++++ b/packages/muelu/test/helmholtz/HelmholtzFEM2D.cpp
+@@ -90,10 +90,17 @@ int main(int argc, char *argv[]) {
+     inputfile >> model;
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
++    
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
+ 
+     Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "HelmholtzFEM2D", 0, stretchx, stretchy, stretchz,
++                                                              Kxx, Kxy, Kyy, dt, "tri", 
+                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
+     Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "HelmholtzFEM2D", 0, stretchx, stretchy, stretchz,
++                                                            Kxx, Kxy, Kyy, dt, "tri", 
+                                                             h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+@@ -171,7 +178,7 @@ int main(int argc, char *argv[]) {
+ 
+     tm = rcp(new TimeMonitor(*TimeMonitor::getNewTimer("ScalingTest: 4 - Belos Solve")));
+ 
+-    SLSolver->solve(B, X);
++    int ret = SLSolver->solve(B, X);
+ 
+     tm = Teuchos::null;
+ 
+@@ -179,7 +186,10 @@ int main(int argc, char *argv[]) {
+ 
+     TimeMonitor::summarize();
+ 
+-    success = true;
++    if(ret == 0)
++      success = true;
++    else
++      success = false;
+   }
+   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
+   return (success ? EXIT_SUCCESS : EXIT_FAILURE);
+diff --git a/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp b/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp
+index 2cf5b299b69..0fb51d1b7f8 100644
+--- a/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp
++++ b/packages/muelu/test/helmholtz/HelmholtzFEM3D.cpp
+@@ -91,9 +91,16 @@ int main(int argc, char *argv[]) {
+     if (comm->getRank() == 0)
+       std::cout << "velocity model: " << model << std::endl;
+ 
++    double Kxx = 0.0;
++    double Kxy = 0.0;
++    double Kyy = 0.0;
++    double dt = 0.0;
++
+     Galeri::Xpetra::Parameters<GO> matrixParameters_helmholtz(clp, nx, ny, nz, "HelmholtzFEM3D", 0, stretchx, stretchy, stretchz,
++                                                              Kxx, Kxy, Kyy, dt, "tri",
+                                                               h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, 0.0, mx, my, mz, model);
+     Galeri::Xpetra::Parameters<GO> matrixParameters_shifted(clp, nx, ny, nz, "HelmholtzFEM3D", 0, stretchx, stretchy, stretchz,
++                                                            Kxx, Kxy, Kyy, dt, "tri", 
+                                                             h, delta, PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR, omega, shift, mx, my, mz, model);
+     Xpetra::Parameters xpetraParameters(clp);
+ 
+@@ -168,7 +175,7 @@ int main(int argc, char *argv[]) {
+ 
+     tm = rcp(new TimeMonitor(*TimeMonitor::getNewTimer("ScalingTest: 4 - Belos Solve")));
+ 
+-    SLSolver->solve(B, X);
++    int ret = SLSolver->solve(B, X);
+ 
+     tm = Teuchos::null;
+ 
+@@ -176,7 +183,10 @@ int main(int argc, char *argv[]) {
+ 
+     TimeMonitor::summarize();
+ 
+-    success = true;
++    if (ret == 0)
++      success = true;
++    else
++      success = false;
+   }
+   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
+ 
+-- 
+2.49.0
+
