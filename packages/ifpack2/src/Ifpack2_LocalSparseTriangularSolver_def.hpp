@@ -984,7 +984,7 @@ localTriangularSolve (const MV& Y,
   //TODO : Check if we enter any of the Kokkos Kernels Sptrsv
   if (Teuchos::nonnull(kh_) && this->isKokkosKernelsSptrsv_ && trans == "N")
   {
-    std::cout << "Went into Kokkos Kernels Sptrsv 1" << std::endl;
+    // std::cout << "Went into Kokkos Kernels Sptrsv 1" << std::endl;
     auto A_crs = Teuchos::rcp_dynamic_cast<const crs_matrix_type> (this->A_);
     auto A_lclk = A_crs->getLocalMatrixDevice ();
     auto ptr    = A_lclk.graph.row_map;
@@ -998,9 +998,10 @@ localTriangularSolve (const MV& Y,
       auto Y_lcl = Y_j->getLocalViewDevice (Tpetra::Access::ReadOnly);
       auto X_lcl_1d = Kokkos::subview (X_lcl, Kokkos::ALL (), 0);
       auto Y_lcl_1d = Kokkos::subview (Y_lcl, Kokkos::ALL (), 0);
-      KokkosSparse::sptrsv_solve(kh_.getRawPtr(), ptr, ind, val, Y_lcl_1d, X_lcl_1d);
-      // TODO is this fence needed...
-      typename k_handle::HandleExecSpace().fence();
+      KokkosSparse::Experimental::sptrsv_solve(kh_.getRawPtr(), ptr, ind, val, Y_lcl_1d, X_lcl_1d);
+
+      // TODO is this fence needed... Probably not...
+      // typename k_handle::HandleExecSpace().fence();
     }
   } // End using regular interface of Kokkos Kernels Sptrsv
   else if (kh_v_nonnull_ && this->isKokkosKernelsSptrsv_ && trans == "N")
