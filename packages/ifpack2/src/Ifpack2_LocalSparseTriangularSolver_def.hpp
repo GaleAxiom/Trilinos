@@ -19,7 +19,6 @@
 #include "Teuchos_StandardParameterEntryValidators.hpp"
 #include "Tpetra_Details_determineLocalTriangularStructure.hpp"
 #include "KokkosSparse_trsv.hpp"
-#include "KokkosSparse_sptrsv_handle.hpp"
 
 #ifdef HAVE_IFPACK2_SHYLU_NODEHTS
 # include "shylu_hts.hpp"
@@ -638,8 +637,8 @@ LocalSparseTriangularSolver<MatrixType>::kokkosKernelsAlgorithm() const
       std::is_same<int, local_ordinal_type>::value &&
     (std::is_same<scalar_type, float>::value ||
       std::is_same<scalar_type, double>::value ||
-      std::is_same<scalar_type, Kokkos::complex<float>>::value ||
-      std::is_same<scalar_type, Kokkos::complex<double>>::value))
+      std::is_same<scalar_type, std::complex<float>>::value ||
+      std::is_same<scalar_type, std::complex<double>>::value))
   {
     return KokkosSparse::Experimental::SPTRSVAlgorithm::SPTRSV_CUSPARSE;
   }
@@ -656,8 +655,6 @@ compute ()
   if (! out_.is_null ()) {
     *out_ << ">>> DEBUG " << prefix << std::endl;
   }
-
-  std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 1" << std::endl;
 
   if (!isKokkosKernelsStream_) {
     TEUCHOS_TEST_FOR_EXCEPTION
@@ -693,9 +690,6 @@ compute ()
      "been called by this point, but isInitialized_ is false.  "
      "Please report this bug to the Ifpack2 developers.");
 
-
-  std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 2" << std::endl;
-
 // NOTE (Nov-09-2022):
 // For Cuda >= 11.3 (using cusparseSpSV), always call symbolic during compute
 // even when matrix values are changed with the same sparsity pattern.
@@ -712,24 +706,22 @@ compute ()
         auto Alocal = A_crs->getLocalMatrixDevice();
         auto val    = Alocal.values;
   #if (CUSPARSE_VERSION >= 12100)
-        // Print the type of sptrsv_handle
-        auto *sptrsv_handle = kh_->get_sptrsv_handle();
-        
-        const bool transpose = false; // Set according to your needs
-        const bool is_lower = (this->uplo_ == "L");
-        if(sptrsv_handle->get_cuSparseHandle() == nullptr)
-        {
-          sptrsv_handle->create_cuSPARSE_Handle(transpose, is_lower);
-        }
-
-        //TODO : Destroy the handle when done
-        auto cusparse_handle = sptrsv_handle->get_cuSparseHandle();
-        
-        void* val_ptr = val.data();
-        cusparseSpSV_updateMatrix(cusparse_handle->handle,
-                          cusparse_handle->spsvDescr,
-                          val_ptr,
-                          CUSPARSE_SPSV_UPDATE_GENERAL);
+    auto *sptrsv_handle = kh_->get_sptrsv_handle();
+          
+    if(sptrsv_handle->get_cuSparseHandle() == nullptr)
+    {
+      const bool transpose = false;
+      const bool is_lower = (this->uplo_ == "L");
+      sptrsv_handle->create_cuSPARSE_Handle(transpose, is_lower);
+    }
+    
+    auto cusparse_handle = sptrsv_handle->get_cuSparseHandle();
+    
+    void* val_ptr = val.data();
+    cusparseSpSV_updateMatrix(cusparse_handle->handle,
+                      cusparse_handle->spsvDescr,
+                      val_ptr,
+                      CUSPARSE_SPSV_UPDATE_GENERAL);
   #else
         auto ptr    = Alocal.graph.row_map;
         auto ind    = Alocal.graph.entries;
@@ -740,7 +732,6 @@ compute ()
           auto A_crs_i = Teuchos::rcp_dynamic_cast<const crs_matrix_type> (A_crs_v_[i], true);
           auto Alocal_i = A_crs_i->getLocalMatrixDevice();
           auto val_i    = Alocal_i.values;
-          std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 6" << std::endl;
   #if (CUSPARSE_VERSION >= 12100)
           auto *sptrsv_handle = kh_v_[i]->get_sptrsv_handle();
           auto cusparse_handle = sptrsv_handle->get_cuSparseHandle();
@@ -750,7 +741,6 @@ compute ()
                             cusparse_handle->spsvDescr,
                             val_i.data(),
                             CUSPARSE_SPSV_UPDATE_GENERAL);
-          std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 7" << std::endl;
   #else
           auto ptr_i    = Alocal_i.graph.row_map;
           auto ind_i    = Alocal_i.graph.entries;
@@ -765,6 +755,7 @@ compute ()
   if (! isComputed_) {//Only compute if not computed before
     if (Teuchos::nonnull (htsImpl_))
       htsImpl_->compute (*A_crs_, out_);
+
     isComputed_ = true;
     ++numCompute_;
   }
@@ -980,11 +971,8 @@ localTriangularSolve (const MV& Y,
     (mode == Teuchos::TRANS ? "T" : "N");
   const size_t numVecs = std::min (X.getNumVectors (), Y.getNumVectors ());
 
-
-  //! We enter here if we are using Kokkos Kernels Sptrsv
   if (Teuchos::nonnull(kh_) && this->isKokkosKernelsSptrsv_ && trans == "N")
   {
-    // std::cout << "Went into Kokkos Kernels Sptrsv 1" << std::endl;
     auto A_crs = Teuchos::rcp_dynamic_cast<const crs_matrix_type> (this->A_);
     auto A_lclk = A_crs->getLocalMatrixDevice ();
     auto ptr    = A_lclk.graph.row_map;
@@ -998,15 +986,13 @@ localTriangularSolve (const MV& Y,
       auto Y_lcl = Y_j->getLocalViewDevice (Tpetra::Access::ReadOnly);
       auto X_lcl_1d = Kokkos::subview (X_lcl, Kokkos::ALL (), 0);
       auto Y_lcl_1d = Kokkos::subview (Y_lcl, Kokkos::ALL (), 0);
-      KokkosSparse::Experimental::sptrsv_solve(kh_.getRawPtr(), ptr, ind, val, Y_lcl_1d, X_lcl_1d);
-
+      KokkosSparse::sptrsv_solve(kh_.getRawPtr(), ptr, ind, val, Y_lcl_1d, X_lcl_1d);
       // TODO is this fence needed... Probably not as it does not causes any issue.
       // typename k_handle::HandleExecSpace().fence();
     }
   } // End using regular interface of Kokkos Kernels Sptrsv
   else if (kh_v_nonnull_ && this->isKokkosKernelsSptrsv_ && trans == "N")
   {
-    std::cout << "Went into Kokkos Kernels Sptrsv 2" << std::endl;
     std::vector<lno_row_view_t>        ptr_v(num_streams_);
     std::vector<lno_nonzero_view_t>    ind_v(num_streams_);
     std::vector<scalar_nonzero_view_t> val_v(num_streams_);
@@ -1042,7 +1028,6 @@ localTriangularSolve (const MV& Y,
   } // End using stream interface of Kokkos Kernels Sptrsv
   else
   {
-    std::cout << "Went into Kokkos Kernels Sptrsv 3" << std::endl;
     const std::string diag = this->diag_;
     // NOTE (mfh 20 Aug 2017): KokkosSparse::trsv currently is a
     // sequential, host-only code.  See

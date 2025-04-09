@@ -144,9 +144,9 @@ class SPTRSVHandle {
         KOKKOS_IMPL_CUDA_SAFE_CALL(cudaFree(pBuffer));
         pBuffer = nullptr;
       }
-      // KOKKOS_CUSPARSE_SAFE_CALL(cusparseDestroySpMat(matDescr));
-      KOKKOS_CUSPARSE_SAFE_CALL(cusparseSpSV_destroyDescr(spsvDescr));
-      KOKKOS_CUSPARSE_SAFE_CALL(cusparseDestroy(handle));
+      // KOKKOSSPARSE_IMPL_CUSPARSE_SAFE_CALL(cusparseDestroySpMat(matDescr));
+      KOKKOSSPARSE_IMPL_CUSPARSE_SAFE_CALL(cusparseSpSV_destroyDescr(spsvDescr));
+      KOKKOSSPARSE_IMPL_CUSPARSE_SAFE_CALL(cusparseDestroy(handle));
     }
   };
 #else  // CUDA_VERSION < 11030
