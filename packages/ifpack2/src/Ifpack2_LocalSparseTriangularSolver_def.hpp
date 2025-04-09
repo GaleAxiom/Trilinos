@@ -712,15 +712,17 @@ compute ()
         auto Alocal = A_crs->getLocalMatrixDevice();
         auto val    = Alocal.values;
   #if (CUSPARSE_VERSION >= 12100)
+        // Print the type of sptrsv_handle
         auto *sptrsv_handle = kh_->get_sptrsv_handle();
         
+        const bool transpose = false; // Set according to your needs
+        const bool is_lower = (this->uplo_ == "L");
         if(sptrsv_handle->get_cuSparseHandle() == nullptr)
         {
-          const bool transpose = false; // Set according to your needs
-          const bool is_lower = (this->uplo_ == "L");
           sptrsv_handle->create_cuSPARSE_Handle(transpose, is_lower);
         }
-        
+
+        //TODO : Destroy the handle when done
         auto cusparse_handle = sptrsv_handle->get_cuSparseHandle();
         
         void* val_ptr = val.data();
@@ -763,7 +765,6 @@ compute ()
   if (! isComputed_) {//Only compute if not computed before
     if (Teuchos::nonnull (htsImpl_))
       htsImpl_->compute (*A_crs_, out_);
-
     isComputed_ = true;
     ++numCompute_;
   }
@@ -979,8 +980,11 @@ localTriangularSolve (const MV& Y,
     (mode == Teuchos::TRANS ? "T" : "N");
   const size_t numVecs = std::min (X.getNumVectors (), Y.getNumVectors ());
 
+
+  //TODO : Check if we enter any of the Kokkos Kernels Sptrsv
   if (Teuchos::nonnull(kh_) && this->isKokkosKernelsSptrsv_ && trans == "N")
   {
+    std::cout << "Went into Kokkos Kernels Sptrsv 1" << std::endl;
     auto A_crs = Teuchos::rcp_dynamic_cast<const crs_matrix_type> (this->A_);
     auto A_lclk = A_crs->getLocalMatrixDevice ();
     auto ptr    = A_lclk.graph.row_map;
@@ -1001,6 +1005,7 @@ localTriangularSolve (const MV& Y,
   } // End using regular interface of Kokkos Kernels Sptrsv
   else if (kh_v_nonnull_ && this->isKokkosKernelsSptrsv_ && trans == "N")
   {
+    std::cout << "Went into Kokkos Kernels Sptrsv 2" << std::endl;
     std::vector<lno_row_view_t>        ptr_v(num_streams_);
     std::vector<lno_nonzero_view_t>    ind_v(num_streams_);
     std::vector<scalar_nonzero_view_t> val_v(num_streams_);
@@ -1036,6 +1041,7 @@ localTriangularSolve (const MV& Y,
   } // End using stream interface of Kokkos Kernels Sptrsv
   else
   {
+    std::cout << "Went into Kokkos Kernels Sptrsv 3" << std::endl;
     const std::string diag = this->diag_;
     // NOTE (mfh 20 Aug 2017): KokkosSparse::trsv currently is a
     // sequential, host-only code.  See

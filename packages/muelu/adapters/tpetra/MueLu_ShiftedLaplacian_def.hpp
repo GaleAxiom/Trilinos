@@ -237,6 +237,8 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         precList_.set("fact: type", "KSPILUK"); //SERIAL or KSPILUK
         // precList_.set("fact: kspiluk number-of-streams", 1);
         // precList_.set("fact: kspiluk reordering in streams", true);
+        
+        precList_.set("trisolver: type", "KSPTRSV"); //Internal or KSPTRSV
 
         precList_.set("fact: iluk level-of-fill", ilu_leveloffill_);
         precList_.set("fact: absolute threshold", ilu_abs_thresh_);
