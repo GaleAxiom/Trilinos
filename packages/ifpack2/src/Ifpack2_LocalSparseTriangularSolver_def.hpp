@@ -19,6 +19,7 @@
 #include "Teuchos_StandardParameterEntryValidators.hpp"
 #include "Tpetra_Details_determineLocalTriangularStructure.hpp"
 #include "KokkosSparse_trsv.hpp"
+#include "KokkosSparse_sptrsv_handle.hpp"
 
 #ifdef HAVE_IFPACK2_SHYLU_NODEHTS
 # include "shylu_hts.hpp"
@@ -656,6 +657,8 @@ compute ()
     *out_ << ">>> DEBUG " << prefix << std::endl;
   }
 
+  std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 1" << std::endl;
+
   if (!isKokkosKernelsStream_) {
     TEUCHOS_TEST_FOR_EXCEPTION
       (A_.is_null (), std::runtime_error, prefix << "You must call "
@@ -690,6 +693,9 @@ compute ()
      "been called by this point, but isInitialized_ is false.  "
      "Please report this bug to the Ifpack2 developers.");
 
+
+  std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 2" << std::endl;
+
 // NOTE (Nov-09-2022):
 // For Cuda >= 11.3 (using cusparseSpSV), always call symbolic during compute
 // even when matrix values are changed with the same sparsity pattern.
@@ -707,10 +713,20 @@ compute ()
         auto val    = Alocal.values;
   #if (CUSPARSE_VERSION >= 12100)
         auto *sptrsv_handle = kh_->get_sptrsv_handle();
+        
+        if(sptrsv_handle->get_cuSparseHandle() == nullptr)
+        {
+          const bool transpose = false; // Set according to your needs
+          const bool is_lower = (this->uplo_ == "L");
+          sptrsv_handle->create_cuSPARSE_Handle(transpose, is_lower);
+        }
+        
         auto cusparse_handle = sptrsv_handle->get_cuSparseHandle();
+        
+        void* val_ptr = val.data();
         cusparseSpSV_updateMatrix(cusparse_handle->handle,
                           cusparse_handle->spsvDescr,
-                          val.data(),
+                          val_ptr,
                           CUSPARSE_SPSV_UPDATE_GENERAL);
   #else
         auto ptr    = Alocal.graph.row_map;
@@ -722,6 +738,7 @@ compute ()
           auto A_crs_i = Teuchos::rcp_dynamic_cast<const crs_matrix_type> (A_crs_v_[i], true);
           auto Alocal_i = A_crs_i->getLocalMatrixDevice();
           auto val_i    = Alocal_i.values;
+          std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 6" << std::endl;
   #if (CUSPARSE_VERSION >= 12100)
           auto *sptrsv_handle = kh_v_[i]->get_sptrsv_handle();
           auto cusparse_handle = sptrsv_handle->get_cuSparseHandle();
@@ -731,6 +748,7 @@ compute ()
                             cusparse_handle->spsvDescr,
                             val_i.data(),
                             CUSPARSE_SPSV_UPDATE_GENERAL);
+          std::cout << "Ifpack2::LocalSparseTriangularSolver::compute 7" << std::endl;
   #else
           auto ptr_i    = Alocal_i.graph.row_map;
           auto ind_i    = Alocal_i.graph.entries;
