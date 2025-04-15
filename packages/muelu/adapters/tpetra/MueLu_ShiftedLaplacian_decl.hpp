@@ -216,6 +216,8 @@ class ShiftedLaplacian : public BaseClass {
   double ilu_leveloffill_, ilu_abs_thresh_, ilu_rel_thresh_, ilu_diagpivotthresh_;
   double ilu_drop_tol_, ilu_fill_tol_, ilu_relax_val_;
   std::string fact_type_, trisolver_type_;
+  bool has_streams_reorder_;
+  int number_of_streams_;
   std::string ilu_rowperm_, ilu_colperm_, ilu_drop_rule_, ilu_normtype_, ilu_milutype_;
   int schwarz_overlap_;
   bool schwarz_usereorder_;

@@ -86,6 +86,8 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::setParameters(
     ilu_fill_tol_        = paramList->get("MueLu: fill tol", 0.01);
     fact_type_           = paramList->get("MueLu: fact type", "serial");
     trisolver_type_      = paramList->get("MueLu: trisolver type", "Internal");
+    number_of_streams_   = paramList->get("MueLu: number of streams", 0);
+    has_streams_reorder_ = paramList->get("MueLu: streams reorder", false);
     schwarz_overlap_     = paramList->get("MueLu: overlap", 0);
     schwarz_usereorder_  = paramList->get("MueLu: use reorder", true);
     int combinemode      = paramList->get("MueLu: combine mode", 1);
@@ -226,8 +228,8 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         solverType_ = 10;
     } else if (Smoother_ == "ilut") {
         precType_ = "ILUT";
-        precList_.set("fact: type", fact_type_); //serial or par_ilut
-        precList_.set("trisolver: type", trisolver_type_); //Internal or KSPTRSV
+        precList_.set("fact: type", fact_type_);                // serial or par_ilut
+        precList_.set("trisolver: type", trisolver_type_);      // Internal or KSPTRSV
         
         precList_.set("fact: ilut level-of-fill", ilu_leveloffill_);
         precList_.set("fact: absolute threshold", ilu_abs_thresh_);
@@ -236,12 +238,10 @@ void ShiftedLaplacian<Scalar, LocalOrdinal, GlobalOrdinal, Node>::initialize() {
         precList_.set("fact: relax value", ilu_relax_val_);
     } else if (Smoother_ == "riluk") {
         precType_ = "RILUK";
-        precList_.set("fact: type", fact_type_); //SERIAL or KSPILUK
-        // precList_.set("fact: kspiluk number-of-streams", 1);
-        // precList_.set("fact: kspiluk reordering in streams", true);
-        
-        precList_.set("trisolver: type", trisolver_type_); //Internal or KSPTRSV
-
+        precList_.set("fact: type", fact_type_);                // serial or KSPILUK
+        precList_.set("fact: kspiluk number-of-streams", number_of_streams_);
+        precList_.set("fact: kspiluk reordering in streams", has_streams_reorder_);
+        precList_.set("trisolver: type", trisolver_type_);      // Internal or KSPTRSV
         precList_.set("fact: iluk level-of-fill", ilu_leveloffill_);
         precList_.set("fact: absolute threshold", ilu_abs_thresh_);
         precList_.set("fact: relative threshold", ilu_rel_thresh_);
