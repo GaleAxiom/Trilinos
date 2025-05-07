@@ -77,8 +77,6 @@ int main(int argc, char *argv[]) {
     stretchz   = 1.0;
     h          = 0.01;
     delta      = 2.0;
-    double Kxx = 1.0, Kxy = 0., Kyy = 1.0;
-    double dt            = 1.0;
     std::string meshType = "tri";
     int PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR;
     PMLXL = 10;
@@ -87,10 +85,13 @@ int main(int argc, char *argv[]) {
     PMLYR = 10;
     PMLZL = 10;
     PMLZR = 10;
-    double omega, shift;
+    double omega, shift, Kxx, Kxy, Kyy, dt;
     omega = 20.0 * M_PI;
     shift = 0.5;
-    double lx, ly, conv, diff;
+    Kxx = 0.0;
+    Kxy = 0.0;
+    Kyy = 0.0;
+    dt = 0.0;
 
     Galeri::Xpetra::Parameters<GO> matrixParameters(clp, nx, ny, nz, "Helmholtz1D", 0, stretchx, stretchy, stretchz,
                                                     Kxx, Kxy, Kyy, dt, meshType,
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]) {
 
     TimeMonitor::summarize();
 
-    success = true;
+    success = (int)ret;
   }
   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
 

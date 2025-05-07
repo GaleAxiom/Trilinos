@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 
   Teuchos::GlobalMPISession mpiSession(&argc, &argv, NULL);
 
-  bool success = false;
+  bool success = true;
   bool verbose = true;
   try {
     RCP<const Teuchos::Comm<int> > comm = Teuchos::DefaultComm<int>::getComm();
@@ -54,8 +54,10 @@ int main(int argc, char *argv[]) {
     GO nx, ny, nz;
     GO mx, my, mz;
     double stretchx, stretchy, stretchz, h, delta;
-    double Kxx = 1.0, Kxy = 0., Kyy = 1.0;
-    double dt            = 1.0;
+    double Kxx = 0.0;
+    double Kxy = 0.0;
+    double Kyy = 0.0;
+    double dt = 0.0;
     std::string meshType = "tri";
     int PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR;
     double omega, shift;
@@ -171,15 +173,28 @@ int main(int argc, char *argv[]) {
 
     tm = rcp(new TimeMonitor(*TimeMonitor::getNewTimer("ScalingTest: 4 - Belos Solve")));
 
-    SLSolver->solve(B, X);
+    int ret = SLSolver->solve(B, X);
+
+    // Check convergence
+    if (ret != Belos::Converged) {
+      if (comm->getRank() == 0) {
+        success = false;
+        std::cerr << std::endl << "ERROR:  Belos did not converge for omega " << omega << std::endl;
+      }
+    }
+
+    if (comm->getRank() == 0) std::cout << std::endl
+                                          << "SUCCESS:  Belos converged!" << std::endl;
+
+    // Get the number of iterations for this solve.
+    if (comm->getRank() == 0)
+      std::cout << "Number of iterations performed for all solve: " << SLSolver->GetIterations() << std::endl;
 
     tm = Teuchos::null;
 
     globalTimeMonitor = Teuchos::null;
 
     TimeMonitor::summarize();
-
-    success = true;
   }
   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
 

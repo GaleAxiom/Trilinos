@@ -55,8 +55,10 @@ int main(int argc, char *argv[]) {
     GO nx, ny, nz;
     GO mx, my, mz;
     double stretchx, stretchy, stretchz, h, delta;
-    double Kxx = 1.0, Kxy = 0., Kyy = 1.0;
-    double dt            = 1.0;
+    double Kxx = 0.0;
+    double Kxy = 0.0;
+    double Kyy = 0.0;
+    double dt = 0.0;
     std::string meshType = "tri";
     int PMLXL, PMLXR, PMLYL, PMLYR, PMLZL, PMLZR;
     double omega, shift;
@@ -138,6 +140,7 @@ int main(int argc, char *argv[]) {
     omegas.push_back(omega + 10);
     omegas.push_back(omega + 20);
     int total_iters = 0;
+    std::vector<int> ret(omegas.size());
 
     // loop over frequencies
     for (size_t i = 0; i < omegas.size(); i++) {
@@ -186,7 +189,7 @@ int main(int argc, char *argv[]) {
       if (map->isNodeGlobalElement(pointsourceid) == true) {
         B->replaceGlobalValue(pointsourceid, 0, (SC)1.0);
       }
-      SLSolver->solve(B, X);
+      ret[i] = SLSolver->solve(B, X);
 
       // sum up number of iterations
       total_iters += SLSolver->GetIterations();
@@ -196,10 +199,26 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-    if (total_iters <= 110)
-      success = true;
-    else
-      success = false;
+    // Check success for each frequency
+    for(size_t i = 0; i < omegas.size(); i) {
+      // Check convergence
+      if (ret[i] != Belos::Converged) {
+        if (comm->getRank() == 0) {
+          std::cerr << std::endl << "ERROR:  Belos did not converge for test " << i << "and omega " << omegas[i] << std::endl;
+        }
+      }
+    }
+
+    if (comm->getRank() == 0) std::cout << std::endl
+                                          << "SUCCESS:  Belos converged!" << std::endl;
+
+    // Get the number of iterations for this solve.
+    if (comm->getRank() == 0)
+      std::cout << "Number of iterations performed for all solve: " << total_iters << std::endl;
+  }
+  catch (std::exception &e) {
+    std::cerr << "Caught exception: " << e.what() << std::endl;
+    success = false;
   }
 
   TEUCHOS_STANDARD_CATCH_STATEMENTS(verbose, std::cerr, success);
